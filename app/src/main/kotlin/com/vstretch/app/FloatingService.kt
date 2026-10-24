@@ -205,9 +205,12 @@ class FloatingService : Service() {
         seek.progress = ((prefs.k - 1f) * 100).roundToInt()
         dirBtn.text = dirLabel()
         val p = Engine.planFor(this, prefs.k, prefs.wide, prefs.res)
+        val gameSpaceMode = Engine.dev?.redmagic == true
         infoTv.text = if (p == null) "Chưa đọc được thông tin máy"
         else "${p.vl}×${p.vs} (${DeviceInfo.aspectLabel(p.vl, p.vs)}) · " +
-            (if (prefs.fill && !p.isDefault) "lấp đầy ${fmtK(p.k)}" else "viền ≈${"%.0f".format(p.barPct)}%") +
+            (if (prefs.fill && gameSpaceMode && !p.isDefault) "ưu tiên Game Space · không kéo giãn tràn cạnh"
+            else if (prefs.fill && !p.isDefault) "lấp đầy ${fmtK(p.k)}"
+            else "viền ≈${"%.0f".format(p.barPct)}%") +
             " · tối đa ${fmtK(p.maxK)}"
     }
 

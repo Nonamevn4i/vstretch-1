@@ -36,6 +36,7 @@ nên **không bị khóa tỉ lệ** và không biết gì về việc kéo giã
 
 * Nút **Kéo giãn thật: BẬT/TẮT** (mặc định BẬT). Tắt = quay lại kiểu cũ (có viền đen).
 * Bong bóng nổi được giữ cách hai cạnh ngang ít nhất 64 dp, để cửa sổ điều khiển không che cử chỉ vuốt cạnh của RedMagic Game Space.
+* Trên thiết bị nhận diện là RedMagic/Nubia/ZTE, app ưu tiên Game Space: không ép hình tràn ra cạnh bằng SurfaceFlinger khi áp dụng, vì phép chiếu tràn cạnh có thể làm vuốt Game Space không hoạt động. Khi mở app, nếu một lần chạy StretchX trước đó vẫn để phép chiếu tràn cạnh hoạt động, app sẽ dừng canh gác và khôi phục phép chiếu vừa khít. Máy khác vẫn có tùy chọn kéo giãn như trước.
 * **Chẩn đoán**: hiện cách lấy token màn hình, cách gửi lệnh tới SurfaceFlinger, phép chiếu đang dùng, lỗi (nếu có).
 * Một luồng canh gác (chạy trong tiến trình Shizuku, sống tiếp cả khi app bị kill giữa trận) tự áp dụng lại khi bạn
   xoay màn hình, và **tự dừng** nếu kích thước logic bị đổi từ nơi khác (adb/app khác) để không ép phép chiếu cũ.

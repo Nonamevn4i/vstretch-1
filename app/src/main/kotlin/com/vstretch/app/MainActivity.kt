@@ -181,10 +181,22 @@ class MainActivity : Activity() {
             Ui.btn(this, "Rộng (viền trên/dưới)", if (prefs.wide) Ui.RED else Ui.GRAY) { prefs.wide = true; buildUi() },
             Ui.btn(this, "Hẹp (viền trái/phải)", if (!prefs.wide) Ui.RED else Ui.GRAY) { prefs.wide = false; buildUi() }
         ))
-        c.addView(row(
-            Ui.btn(this, if (prefs.fill) "Kéo giãn thật: BẬT" else "Kéo giãn thật: TẮT", if (prefs.fill) Ui.RED else Ui.GRAY) { prefs.fill = !prefs.fill; buildUi() },
-            Ui.btn(this, "Chẩn đoán", Ui.GRAY) { showDiag() }
-        ))
+        val fillControl = if (d?.redmagic == true) {
+            Ui.btn(this, "Ưu tiên Game Space", Ui.OK) {
+                toast("Trên RedMagic, kéo giãn tràn cạnh được tắt để giữ thao tác vuốt Game Space.")
+            }
+        } else {
+            Ui.btn(this, if (prefs.fill) "Kéo giãn thật: BẬT" else "Kéo giãn thật: TẮT", if (prefs.fill) Ui.RED else Ui.GRAY) {
+                prefs.fill = !prefs.fill; buildUi()
+            }
+        }
+        c.addView(row(fillControl, Ui.btn(this, "Chẩn đoán", Ui.GRAY) { showDiag() }))
+        if (d?.redmagic == true) {
+            c.addView(note("Chế độ tương thích RedMagic giữ hình trong vùng màn hình chuẩn để ưu tiên vuốt hai cạnh mở Game Space."))
+            if (Engine.stretchMsg.startsWith("ERR")) {
+                c.addView(note("⚠ Không thể khôi phục phép chiếu màn hình: ${Engine.stretchMsg.removePrefix("ERR: ")}"))
+            }
+        }
         c.addView(row(*listOf(100, 90, 80, 70, 60).map { r ->
             Ui.btn(this, "$r%", if (prefs.res == r) Ui.RED else Ui.GRAY) { prefs.res = r; buildUi() }
         }.toTypedArray()))
@@ -194,8 +206,9 @@ class MainActivity : Activity() {
             Ui.btn(this, "Reset mặc định", Ui.GRAY) { Engine.reset(this) { m -> toast(m); reload() } }
         ))
         c.addView(note("Hàng 100%–60% là tỉ lệ độ phân giải (giảm để nhẹ máy hơn). DPI tự bù để giao diện không đổi kích thước."))
-        c.addView(note("“Kéo giãn thật” ép SurfaceFlinger kéo hình ra TOÀN BỘ panel (hết viền đen). Game vẫn thấy màn hình 16:9 nên không bị khóa tỉ lệ. " +
-            "Cảm ứng không được kéo theo; game có thể không nhận chạm ở vùng viền vừa lấp đầy. Muốn chạm ổn định ở mọi mép, hãy tắt kéo giãn thật."))
+        if (d?.redmagic != true) {
+            c.addView(note("“Kéo giãn thật” ép SurfaceFlinger kéo hình ra TOÀN BỘ panel (hết viền đen). Cảm ứng không được kéo theo; game có thể không nhận chạm ở vùng viền vừa lấp đầy. Muốn chạm ổn định ở mọi mép, hãy tắt kéo giãn thật."))
+        }
         updatePreview()
         return c
     }
@@ -210,7 +223,9 @@ class MainActivity : Activity() {
         infoTv?.text = if (p == null || d == null) "Chưa đọc được thông tin máy" else
             "Màn hình ảo: ${p.vl}×${p.vs} (${DeviceInfo.aspectLabel(p.vl, p.vs)})\n" +
             "DPI: ${if (prefs.active && prefs.baseDpi > 0) prefs.baseDpi else d.curDpi} → ${p.density}\n" +
-            (if (prefs.fill && !p.isDefault)
+            (if (prefs.fill && d.redmagic && !p.isDefault)
+                "Game Space: ưu tiên vuốt cạnh — không kéo giãn tràn cạnh\n"
+            else if (prefs.fill && !p.isDefault)
                 "Viền đen: 0% — lấp đầy bằng kéo giãn ${if (prefs.wide) "dọc" else "ngang"} ${fmtK(p.k)}\n"
             else
                 String.format(Locale.US, "Viền đen: ≈ %.1f%% %s\n", p.barPct, if (prefs.wide) "(trên/dưới)" else "(trái/phải)")) +

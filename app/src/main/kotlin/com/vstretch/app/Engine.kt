@@ -16,14 +16,27 @@ object Engine {
     @Volatile var stretchMsg: String = ""
 
     private val main = Handler(Looper.getMainLooper())
+    @Volatile private var gameSpaceProjectionRestoreAttempted = false
 
     fun refresh(ctx: Context, cb: (Dev) -> Unit) {
         val app = ctx.applicationContext
         fun finish(out: String?) {
             val d = DeviceInfo.read(app, out?.takeIf { !it.startsWith("ERR") })
             dev = d
-            if (!d.overridden) Prefs(app).active = false
-            cb(d)
+            val p = Prefs(app)
+            if (!d.overridden) p.active = false
+            if (d.redmagic && d.overridden && p.active && !gameSpaceProjectionRestoreAttempted) {
+                gameSpaceProjectionRestoreAttempted = true
+                Shizu.call({
+                    it.setStretch(d.physW, d.physH, d.physW, d.physH, false)
+                }) { result ->
+                    stretchMsg = result
+                    if (result.startsWith("ERR")) gameSpaceProjectionRestoreAttempted = false
+                    cb(d)
+                }
+            } else {
+                cb(d)
+            }
         }
         if (Shizu.granted()) Shizu.exec("wm size; wm density") { finish(it) } else finish(null)
     }
@@ -54,13 +67,15 @@ object Engine {
                 } else {
                     p.active = !plan.isDefault
                     p.k = plan.k
+                    val gameSpaceMode = d.redmagic && p.fill
                     // Chờ DisplayManager nhận kích thước mới rồi mới kéo giãn (Sf.set còn tự chờ thêm nếu cần)
                     main.postDelayed({
-                        stretch(app, plan, d, p.fill && !plan.isDefault) { sMsg ->
+                        stretch(app, plan, d, p.fill && !d.redmagic && !plan.isDefault) { sMsg ->
                             refresh(app) {
                                 val head = if (plan.isDefault) "Đã về kích thước mặc định (chiều rộng nhỏ nhất $RESET_SMALLEST_WIDTH_DP dp)"
                                            else "Đã áp dụng ${plan.wmSize} @${plan.density}dpi (${fmtK(plan.k)})"
-                                cb("$head\n$sMsg")
+                                val mode = if (gameSpaceMode) "\nRedMagic: ưu tiên vuốt Game Space; kéo giãn tràn cạnh đã tắt." else ""
+                                cb("$head\n$sMsg$mode")
                             }
                         }
                     }, 350)
