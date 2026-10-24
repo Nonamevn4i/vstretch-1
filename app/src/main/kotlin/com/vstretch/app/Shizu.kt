@@ -51,9 +51,10 @@ object Shizu {
 
     fun exec(cmd: String, done: (String) -> Unit) {
         if (!granted()) { main.post { done("ERR: Shizuku chưa chạy hoặc chưa cấp quyền") }; return }
-        val job = {
+        val job: () -> Unit = {
             val r = try { svc?.exec(cmd) ?: "ERR: service chưa sẵn sàng" } catch (t: Throwable) { "ERR: ${t.message}" }
             main.post { done(r) }
+            Unit
         }
         if (svc != null) io.execute(job) else { synchronized(pending) { pending.add(job) }; ensureBound() }
     }
