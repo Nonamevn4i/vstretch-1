@@ -10,6 +10,14 @@ class ShellService() : IShell.Stub() {
 
     override fun destroy() { exitProcess(0) }
 
+    override fun setStretch(lnW: Int, lnH: Int, physW: Int, physH: Int, fill: Boolean): String = try {
+        Sf.set(lnW, lnH, physW, physH, fill)
+    } catch (t: Throwable) {
+        "ERR: ${t.javaClass.simpleName}: ${t.message}"
+    }
+
+    override fun diag(): String = try { Sf.diag() } catch (t: Throwable) { "ERR: ${t.message}" }
+
     override fun exec(cmd: String): String = try {
         val p = ProcessBuilder("sh", "-c", cmd).redirectErrorStream(true).start()
         val out = p.inputStream.bufferedReader().readText()

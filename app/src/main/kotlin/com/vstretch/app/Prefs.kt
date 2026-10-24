@@ -11,6 +11,8 @@ class Prefs(c: Context) {
     var wide: Boolean get() = sp.getBoolean("wide", true); set(v) = sp.edit().putBoolean("wide", v).apply()
     /** % độ phân giải (50..100) */
     var res: Int get() = sp.getInt("res", 100); set(v) = sp.edit().putInt("res", v).apply()
+    /** true = lấp đầy viền đen bằng kéo giãn thật ở tầng SurfaceFlinger */
+    var fill: Boolean get() = sp.getBoolean("fill", true); set(v) = sp.edit().putBoolean("fill", v).apply()
     var game: String get() = sp.getString("game", GAME_VALORANT_CN)!!; set(v) = sp.edit().putString("game", v).apply()
     /** app đang giữ override wm size/density */
     var active: Boolean get() = sp.getBoolean("active", false); set(v) = sp.edit().putBoolean("active", v).apply()

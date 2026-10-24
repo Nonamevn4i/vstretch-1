@@ -181,6 +181,10 @@ class MainActivity : Activity() {
             Ui.btn(this, "Rộng (viền trên/dưới)", if (prefs.wide) Ui.RED else Ui.GRAY) { prefs.wide = true; buildUi() },
             Ui.btn(this, "Hẹp (viền trái/phải)", if (!prefs.wide) Ui.RED else Ui.GRAY) { prefs.wide = false; buildUi() }
         ))
+        c.addView(row(
+            Ui.btn(this, if (prefs.fill) "Kéo giãn thật: BẬT" else "Kéo giãn thật: TẮT", if (prefs.fill) Ui.RED else Ui.GRAY) { prefs.fill = !prefs.fill; buildUi() },
+            Ui.btn(this, "Chẩn đoán", Ui.GRAY) { showDiag() }
+        ))
         c.addView(row(*listOf(100, 90, 80, 70, 60).map { r ->
             Ui.btn(this, "$r%", if (prefs.res == r) Ui.RED else Ui.GRAY) { prefs.res = r; buildUi() }
         }.toTypedArray()))
@@ -190,6 +194,8 @@ class MainActivity : Activity() {
             Ui.btn(this, "Reset mặc định", Ui.GRAY) { Engine.reset(this) { m -> toast(m); reload() } }
         ))
         c.addView(note("Hàng 100%–60% là tỉ lệ độ phân giải (giảm để nhẹ máy hơn). DPI tự bù để giao diện không đổi kích thước."))
+        c.addView(note("“Kéo giãn thật” ép SurfaceFlinger kéo hình ra TOÀN BỘ panel (hết viền đen). Game vẫn thấy màn hình 16:9 nên không bị khóa tỉ lệ. " +
+            "Lưu ý: cảm ứng vẫn tính theo vùng gốc nên càng gần mép càng lệch nhẹ — hãy dùng mức kéo vừa phải."))
         updatePreview()
         return c
     }
@@ -204,11 +210,22 @@ class MainActivity : Activity() {
         infoTv?.text = if (p == null || d == null) "Chưa đọc được thông tin máy" else
             "Màn hình ảo: ${p.vl}×${p.vs} (${DeviceInfo.aspectLabel(p.vl, p.vs)})\n" +
             "DPI: ${if (prefs.active && prefs.baseDpi > 0) prefs.baseDpi else d.curDpi} → ${p.density}\n" +
-            String.format(Locale.US, "Viền đen: ≈ %.1f%% %s\n", p.barPct, if (prefs.wide) "(trên/dưới)" else "(trái/phải)") +
+            (if (prefs.fill && !p.isDefault)
+                "Viền đen: 0% — lấp đầy bằng kéo giãn ${if (prefs.wide) "dọc" else "ngang"} ${fmtK(p.k)}\n"
+            else
+                String.format(Locale.US, "Viền đen: ≈ %.1f%% %s\n", p.barPct, if (prefs.wide) "(trên/dưới)" else "(trái/phải)")) +
             "Mức kéo tối đa an toàn cho máy này: ${fmtK(p.maxK)}"
     }
 
     private fun abs1(x: Float) = kotlin.math.abs(x) > 0.004f
+
+    private fun showDiag() = Engine.diag { text ->
+        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+            .setTitle("Chẩn đoán kéo giãn")
+            .setMessage(text)
+            .setPositiveButton("Đóng", null)
+            .show()
+    }
 
     // ---- Game
     private fun gameCard(): View {

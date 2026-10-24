@@ -14,7 +14,8 @@ data class Plan(
     val k: Float,            // hệ số thực tế sau khi kẹp theo giới hạn máy
     val barPct: Float,       // % diện tích panel bị viền đen
     val maxK: Float,         // mức kéo tối đa an toàn cho máy này
-    val isDefault: Boolean
+    val isDefault: Boolean,
+    val lnW: Int, val lnH: Int // kích thước màn hình logic theo hướng tự nhiên (đúng thứ tự `wm size`)
 ) {
     val aspect get() = vl.toFloat() / vs
 }
@@ -57,6 +58,8 @@ object Stretch {
         val bars = 1f - (vl * scale * vs * scale) / (L.toFloat() * S)
         val density = (baseDpi / scale).roundToInt().coerceAtLeast(72) // giữ kích thước UI vật lý
         val size = if (physW < physH) "${vs}x${vl}" else "${vl}x${vs}"
-        return Plan(size, vl, vs, density, k, bars * 100f, km / 100f, k <= 1f && resPct >= 100)
+        val portraitNative = physW < physH
+        return Plan(size, vl, vs, density, k, bars * 100f, km / 100f, k <= 1f && resPct >= 100,
+            if (portraitNative) vs else vl, if (portraitNative) vl else vs)
     }
 }

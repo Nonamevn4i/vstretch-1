@@ -196,13 +196,15 @@ class FloatingService : Service() {
         dirBtn.text = dirLabel()
         val p = Engine.planFor(this, prefs.k, prefs.wide, prefs.res)
         infoTv.text = if (p == null) "Chưa đọc được thông tin máy"
-        else "${p.vl}×${p.vs} (${DeviceInfo.aspectLabel(p.vl, p.vs)}) · viền ≈${"%.0f".format(p.barPct)}% · tối đa ${fmtK(p.maxK)}"
+        else "${p.vl}×${p.vs} (${DeviceInfo.aspectLabel(p.vl, p.vs)}) · " +
+            (if (prefs.fill && !p.isDefault) "lấp đầy ${fmtK(p.k)}" else "viền ≈${"%.0f".format(p.barPct)}%") +
+            " · tối đa ${fmtK(p.maxK)}"
     }
 
     private fun applyK(k: Float) {
         prefs.k = k
         Engine.apply(this, k, prefs.wide, prefs.res) { m ->
-            if (m.startsWith("ERR") || m.startsWith("Cần")) toast(m)
+            if (m.startsWith("ERR") || m.startsWith("Cần") || m.contains("⚠")) toast(m)
             syncUi(); h.postDelayed({ clamp() }, 700)
         }
     }

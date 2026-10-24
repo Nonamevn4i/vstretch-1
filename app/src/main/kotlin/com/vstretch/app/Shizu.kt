@@ -19,7 +19,7 @@ object Shizu {
 
     private val args by lazy {
         Shizuku.UserServiceArgs(ComponentName(BuildConfig.APPLICATION_ID, ShellService::class.java.name))
-            .daemon(false)
+            .daemon(true)   // sống tiếp khi app bị hệ thống kill giữa trận => canh gác kéo giãn không mất
             .processNameSuffix("shell")
             .debuggable(BuildConfig.DEBUG)
             .version(BuildConfig.VERSION_CODE)
@@ -49,13 +49,18 @@ object Shizu {
         try { Shizuku.bindUserService(args, conn) } catch (_: Throwable) { binding = false }
     }
 
-    fun exec(cmd: String, done: (String) -> Unit) {
+    /** Chạy [block] trên service shell (luồng nền), trả kết quả về main thread. */
+    fun call(block: (IShell) -> String, done: (String) -> Unit) {
         if (!granted()) { main.post { done("ERR: Shizuku chưa chạy hoặc chưa cấp quyền") }; return }
-        val job: () -> Unit = {
-            val r = try { svc?.exec(cmd) ?: "ERR: service chưa sẵn sàng" } catch (t: Throwable) { "ERR: ${t.message}" }
+        val job = {
+            val r = try {
+                val s = svc
+                if (s == null) "ERR: service chưa sẵn sàng" else block(s)
+            } catch (t: Throwable) { "ERR: ${t.message}" }
             main.post { done(r) }
-            Unit
         }
         if (svc != null) io.execute(job) else { synchronized(pending) { pending.add(job) }; ensureBound() }
     }
+
+    fun exec(cmd: String, done: (String) -> Unit) = call({ it.exec(cmd) }, done)
 }
