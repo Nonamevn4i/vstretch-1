@@ -21,8 +21,8 @@ class ShellService() : IShell.Stub() {
     override fun exec(cmd: String): String = try {
         val p = ProcessBuilder("sh", "-c", cmd).redirectErrorStream(true).start()
         val out = p.inputStream.bufferedReader().readText()
-        p.waitFor()
-        out.trim()
+        val code = p.waitFor()
+        if (code == 0) out.trim() else "ERR: lệnh thất bại (mã $code): ${out.trim()}"
     } catch (t: Throwable) {
         "ERR: ${t.message}"
     }

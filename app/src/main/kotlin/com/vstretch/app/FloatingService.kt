@@ -90,6 +90,8 @@ class FloatingService : Service() {
 
     private fun dp(v: Int) = Ui.dp(this, v)
 
+    private fun edgeGestureInset() = dp(64)
+
     private fun buildOverlay() {
         bubble = Ui.tv(this, fmtK(prefs.k), 12f, Color.WHITE, true).apply {
             gravity = Gravity.CENTER; background = Ui.oval(0xEEFF4655.toInt())
@@ -159,7 +161,7 @@ class FloatingService : Service() {
                     MotionEvent.ACTION_MOVE -> {
                         val dx = (e.rawX - tx).toInt(); val dy = (e.rawY - ty).toInt()
                         if (abs(dx) + abs(dy) > dp(6)) moved = true
-                        if (moved) { lp.x = sx + dx; lp.y = sy + dy; root?.let { wm.updateViewLayout(it, lp) } }
+                        if (moved) { lp.x = sx + dx; lp.y = sy + dy; clamp() }
                     }
                     MotionEvent.ACTION_UP -> if (!moved) toggle() else { clamp(); prefs.bx = lp.x; prefs.by = lp.y }
                 }
@@ -168,6 +170,10 @@ class FloatingService : Service() {
         })
 
         wm.addView(rootView, lp)
+        h.post {
+            clamp()
+            prefs.bx = lp.x
+        }
         Engine.refresh(this) { syncUi() }
     }
 
@@ -175,6 +181,7 @@ class FloatingService : Service() {
 
     private fun toggle() {
         panel.visibility = if (panel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        clamp()
         if (panel.visibility == View.VISIBLE) Engine.refresh(this) { syncUi() }
         h.postDelayed({ clamp() }, 80)
     }
@@ -183,7 +190,10 @@ class FloatingService : Service() {
         val r = root ?: return
         val dm = DisplayMetrics()
         @Suppress("DEPRECATION") wm.defaultDisplay.getRealMetrics(dm)
-        lp.x = lp.x.coerceIn(0, max(0, dm.widthPixels - r.width))
+        val occupiedWidth = if (panel.visibility == View.VISIBLE) max(r.width, dp(260)) else r.width
+        val maxX = max(0, dm.widthPixels - occupiedWidth)
+        val inset = minOf(edgeGestureInset(), maxX / 2)
+        lp.x = lp.x.coerceIn(inset, max(inset, maxX - inset))
         lp.y = lp.y.coerceIn(0, max(0, dm.heightPixels - r.height))
         try { wm.updateViewLayout(r, lp) } catch (_: Throwable) {}
     }

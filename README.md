@@ -22,7 +22,7 @@ APK ký bằng debug key nên cài thẳng được; muốn phát hành thì t�
 1. Cài & mở **Shizuku**, bấm Start (Gỡ lỗi không dây: Android 11+ không cần PC).
 2. Mở StretchX → **Cấp quyền** Shizuku.
 3. Chọn hệ số / hướng / % độ phân giải → **Áp dụng**. Hoặc bấm preset 16:9, 2:1, 21:9 (tự tính theo tỉ lệ máy).
-4. **Bật cửa sổ nổi** → thoát app, mở game, chạm bong bóng để chỉnh. **Reset** = về mặc định.
+4. **Bật cửa sổ nổi** → thoát app, mở game, chạm bong bóng để chỉnh. **Reset** = độ phân giải gốc, chiều rộng nhỏ nhất 1200 dp.
 5. Nút “Mở game & áp dụng” áp dụng trước rồi mở Valorant CN (khuyên dùng).
 
 ## Cách "kéo giãn thật" hoạt động (v2.0)
@@ -35,15 +35,16 @@ Bản này làm thêm bước thứ hai, đúng cách scrcpy điều khiển mà
 nên **không bị khóa tỉ lệ** và không biết gì về việc kéo giãn.
 
 * Nút **Kéo giãn thật: BẬT/TẮT** (mặc định BẬT). Tắt = quay lại kiểu cũ (có viền đen).
+* Bong bóng nổi được giữ cách hai cạnh ngang ít nhất 64 dp, để cửa sổ điều khiển không che cử chỉ vuốt cạnh của RedMagic Game Space.
 * **Chẩn đoán**: hiện cách lấy token màn hình, cách gửi lệnh tới SurfaceFlinger, phép chiếu đang dùng, lỗi (nếu có).
 * Một luồng canh gác (chạy trong tiến trình Shizuku, sống tiếp cả khi app bị kill giữa trận) tự áp dụng lại khi bạn
   xoay màn hình, và **tự dừng** nếu kích thước logic bị đổi từ nơi khác (adb/app khác) để không ép phép chiếu cũ.
 
 ## Giới hạn quan trọng (đọc kỹ)
-* **Cảm ứng không được kéo giãn theo.** Android chỉ đổi ánh xạ cảm ứng khi chính DisplayManager đổi, còn ta chỉ đổi phần hiển thị.
-  Hệ quả: tại **giữa màn hình** cảm ứng khớp 100%, càng ra **mép** (theo chiều bị kéo) càng lệch — tối đa bằng đúng bề rộng
-  viền đen cũ (≈5% chiều cao với mức 1.12x trên panel 16:10). Mức kéo càng nhỏ thì lệch càng ít → hãy bắt đầu từ 1.05–1.15x.
-  Không có quyền shell nào cho phép hiệu chỉnh cảm ứng (`SET_INPUT_CALIBRATION` chỉ dành cho hệ thống).
+* **Kéo giãn thật chỉ biến đổi hình ảnh, không biến đổi sự kiện cảm ứng.** Nếu game giới hạn vùng nhận chạm theo khung hình ban đầu,
+  phần hình được kéo vào viền có thể không nhận chạm hoặc vị trí chạm bị lệch. Shizuku chạy với quyền shell không có quyền sửa
+  ánh xạ cảm ứng hệ thống (`SET_INPUT_CALIBRATION` chỉ dành cho hệ thống); muốn chạm chính xác ở mọi mép, hãy tắt
+  **Kéo giãn thật** hoặc dùng chế độ/tỉ lệ màn hình được game hỗ trợ. Không thể khắc phục an toàn chỉ bằng phép chiếu SurfaceFlinger.
 * Kéo "Rộng" = màn hình ảo rộng hơn tỉ lệ máy → hình kéo giãn theo chiều **dọc**. "Hẹp" = ngược lại → kéo giãn theo chiều **ngang**
   (kiểu "4:3 kéo giãn" quen thuộc: mục tiêu trông to bề ngang hơn).
 * Mức tối đa tự giảm trên máy độ phân giải thấp (sàn 800×480 để không dãn quá mức).
@@ -58,3 +59,6 @@ nên **không bị khóa tỉ lệ** và không biết gì về việc kéo giã
 
 Phép chiếu kéo giãn của SurfaceFlinger **không** được lưu qua lần khởi động lại: nếu hình còn bị kéo lạ sau khi reset,
 chỉ cần **xoay màn hình một lần** hoặc **khởi động lại máy** là về bình thường.
+
+Nút Reset khôi phục độ phân giải về panel gốc và đặt mật độ để **chiều rộng nhỏ nhất xấp xỉ 1200 dp**. Mật độ này là override
+có chủ ý nên khác DPI gốc của máy; lệnh khôi phục khẩn cấp `wm density reset` sẽ đưa mật độ về mặc định của nhà sản xuất.

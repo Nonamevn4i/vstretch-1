@@ -3,6 +3,10 @@ package com.vstretch.app
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import kotlin.math.min
+import kotlin.math.roundToInt
+
+private const val RESET_SMALLEST_WIDTH_DP = 1200
 
 /** Logic trung tâm: đọc máy, tính kế hoạch, gọi `wm size` / `wm density` rồi kéo giãn thật qua SurfaceFlinger (Sf.kt). */
 object Engine {
@@ -39,19 +43,22 @@ object Engine {
         refresh(app) { d ->
             if (!p.active || p.baseDpi <= 0) p.baseDpi = d.curDpi
             val plan = Stretch.plan(d.physW, d.physH, p.baseDpi, k, wide, res)
-            val cmd = if (plan.isDefault) "wm size reset; wm density reset"
-                      else "wm size ${plan.wmSize}; wm density ${plan.density}"
+            val cmd = if (plan.isDefault) {
+                "wm size reset && wm density ${resetDensity(d)}"
+            } else {
+                "wm size ${plan.wmSize} && wm density ${plan.density}"
+            }
             Shizu.exec(cmd) { out ->
-                p.active = !plan.isDefault
-                p.k = plan.k
                 if (out.startsWith("ERR")) {
                     refresh(app) { cb(out) }
                 } else {
+                    p.active = !plan.isDefault
+                    p.k = plan.k
                     // Chờ DisplayManager nhận kích thước mới rồi mới kéo giãn (Sf.set còn tự chờ thêm nếu cần)
                     main.postDelayed({
                         stretch(app, plan, d, p.fill && !plan.isDefault) { sMsg ->
                             refresh(app) {
-                                val head = if (plan.isDefault) "Đã về mặc định"
+                                val head = if (plan.isDefault) "Đã về kích thước mặc định (chiều rộng nhỏ nhất $RESET_SMALLEST_WIDTH_DP dp)"
                                            else "Đã áp dụng ${plan.wmSize} @${plan.density}dpi (${fmtK(plan.k)})"
                                 cb("$head\n$sMsg")
                             }
@@ -88,17 +95,32 @@ object Engine {
         val app = ctx.applicationContext
         val p = Prefs(app)
         if (!Shizu.granted()) { cb("Cần Shizuku để reset (hoặc chạy: adb shell wm size reset)"); return }
-        Shizu.exec("wm size reset; wm density reset") {
-            p.active = false; p.k = 1f
-            // trả phép chiếu SurfaceFlinger về mặc định và dừng canh gác
-            main.postDelayed({
-                refresh(app) { d ->
-                    Shizu.call({ it.setStretch(d.physW, d.physH, d.physW, d.physH, false) }) { r ->
-                        stretchMsg = r
-                        cb("Đã reset về màn hình mặc định")
-                    }
+        refresh(app) { d ->
+            val density = resetDensity(d)
+            Shizu.exec("wm size reset && wm density $density") { out ->
+                if (out.startsWith("ERR")) {
+                    cb("Không thể khôi phục màn hình:\n$out")
+                    return@exec
                 }
-            }, 350)
+                p.active = false
+                p.k = 1f
+                // Trả phép chiếu SurfaceFlinger về mặc định và dừng canh gác.
+                main.postDelayed({
+                    refresh(app) { current ->
+                        Shizu.call({ it.setStretch(current.physW, current.physH, current.physW, current.physH, false) }) { r ->
+                            stretchMsg = r
+                            if (r.startsWith("ERR")) {
+                                cb("Đã đặt lại độ phân giải, nhưng không thể khôi phục phép chiếu màn hình:\n$r")
+                            } else {
+                                cb("Đã khôi phục độ phân giải gốc và đặt chiều rộng nhỏ nhất thành $RESET_SMALLEST_WIDTH_DP dp")
+                            }
+                        }
+                    }
+                }, 350)
+            }
         }
     }
+
+    private fun resetDensity(d: Dev): Int =
+        (min(d.physW, d.physH) * 160f / RESET_SMALLEST_WIDTH_DP).roundToInt().coerceAtLeast(1)
 }

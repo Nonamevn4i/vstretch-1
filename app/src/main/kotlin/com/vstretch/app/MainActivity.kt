@@ -195,7 +195,7 @@ class MainActivity : Activity() {
         ))
         c.addView(note("Hàng 100%–60% là tỉ lệ độ phân giải (giảm để nhẹ máy hơn). DPI tự bù để giao diện không đổi kích thước."))
         c.addView(note("“Kéo giãn thật” ép SurfaceFlinger kéo hình ra TOÀN BỘ panel (hết viền đen). Game vẫn thấy màn hình 16:9 nên không bị khóa tỉ lệ. " +
-            "Lưu ý: cảm ứng vẫn tính theo vùng gốc nên càng gần mép càng lệch nhẹ — hãy dùng mức kéo vừa phải."))
+            "Cảm ứng không được kéo theo; game có thể không nhận chạm ở vùng viền vừa lấp đầy. Muốn chạm ổn định ở mọi mép, hãy tắt kéo giãn thật."))
         updatePreview()
         return c
     }
@@ -267,7 +267,8 @@ class MainActivity : Activity() {
             Ui.btn(this, "Bật cửa sổ nổi") { startFloat() },
             Ui.btn(this, "Tắt", Ui.GRAY) { stopService(Intent(this, FloatingService::class.java)) }
         ))
-        c.addView(note("Bong bóng nổi kéo thả được: chạm để mở thanh chỉnh 1.00x–1.50x và nút Reset. Thông báo cũng có nút “Reset màn hình”."))
+        c.addView(note("Bong bóng nổi tự tránh 64 dp hai cạnh ngang để không che thao tác vuốt Game Space trên RedMagic. Chạm bong bóng để mở thanh chỉnh 1.00x–1.50x và nút Reset."))
+        c.addView(note("Nếu vẫn không vuốt được, thử Tắt cửa sổ nổi trước. Nếu chưa hết, bấm Reset màn hình để kiểm tra xung đột với cấu hình hiển thị."))
         return c
     }
 
