@@ -36,16 +36,16 @@ nên **không bị khóa tỉ lệ** và không biết gì về việc kéo giã
 
 * Nút **Kéo giãn thật: BẬT/TẮT** (mặc định BẬT). Tắt = quay lại kiểu cũ (có viền đen).
 * Bong bóng nổi được giữ cách hai cạnh ngang ít nhất 64 dp, để cửa sổ điều khiển không che cử chỉ vuốt cạnh của RedMagic Game Space.
-* Trên thiết bị nhận diện là RedMagic/Nubia/ZTE, app ưu tiên Game Space: không ép hình tràn ra cạnh bằng SurfaceFlinger khi áp dụng, vì phép chiếu tràn cạnh có thể làm vuốt Game Space không hoạt động. Khi mở app, nếu một lần chạy StretchX trước đó vẫn để phép chiếu tràn cạnh hoạt động, app sẽ dừng canh gác và khôi phục phép chiếu vừa khít. Máy khác vẫn có tùy chọn kéo giãn như trước.
+* Trên RedMagic/Nubia/ZTE, kéo giãn tràn toàn panel vẫn được hỗ trợ như các máy khác. Phép chiếu chỉ thay đổi hình ảnh, không remap cảm ứng; cử chỉ vuốt từ cạnh có thể phụ thuộc vào ROM và có thể không hoạt động khi bật chế độ này.
 * **Chẩn đoán**: hiện cách lấy token màn hình, cách gửi lệnh tới SurfaceFlinger, phép chiếu đang dùng, lỗi (nếu có).
 * Một luồng canh gác (chạy trong tiến trình Shizuku, sống tiếp cả khi app bị kill giữa trận) tự áp dụng lại khi bạn
   xoay màn hình, và **tự dừng** nếu kích thước logic bị đổi từ nơi khác (adb/app khác) để không ép phép chiếu cũ.
 
 ## Giới hạn quan trọng (đọc kỹ)
 * **Kéo giãn thật chỉ biến đổi hình ảnh, không biến đổi sự kiện cảm ứng.** Nếu game giới hạn vùng nhận chạm theo khung hình ban đầu,
-  phần hình được kéo vào viền có thể không nhận chạm hoặc vị trí chạm bị lệch. Shizuku chạy với quyền shell không có quyền sửa
-  ánh xạ cảm ứng hệ thống (`SET_INPUT_CALIBRATION` chỉ dành cho hệ thống); muốn chạm chính xác ở mọi mép, hãy tắt
-  **Kéo giãn thật** hoặc dùng chế độ/tỉ lệ màn hình được game hỗ trợ. Không thể khắc phục an toàn chỉ bằng phép chiếu SurfaceFlinger.
+  phần hình được kéo vào viền có thể không nhận chạm hoặc vị trí chạm bị lệch. Cử chỉ vuốt cạnh trên một số ROM cũng có thể bị ảnh hưởng.
+  Shizuku chạy với quyền shell không có quyền sửa ánh xạ cảm ứng hệ thống (`SET_INPUT_CALIBRATION` chỉ dành cho hệ thống); muốn chạm
+  chính xác ở mọi mép, hãy tắt **Kéo giãn thật** hoặc dùng chế độ/tỉ lệ màn hình được game hỗ trợ. Không thể khắc phục an toàn chỉ bằng phép chiếu SurfaceFlinger.
 * Kéo "Rộng" = màn hình ảo rộng hơn tỉ lệ máy → hình kéo giãn theo chiều **dọc**. "Hẹp" = ngược lại → kéo giãn theo chiều **ngang**
   (kiểu "4:3 kéo giãn" quen thuộc: mục tiêu trông to bề ngang hơn).
 * Mức tối đa tự giảm trên máy độ phân giải thấp (sàn 800×480 để không dãn quá mức).
