@@ -38,9 +38,24 @@ object Engine {
         val p = Prefs(app)
         if (!Shizu.granted()) { cb("Cần bật Shizuku và cấp quyền cho StretchX"); return }
         refresh(app) { d ->
-            if (!p.active || p.baseDpi <= 0) p.baseDpi = d.curDpi
+            if (!p.active) {
+                val previousBaseDpi = p.baseDpi
+                p.baseDpi = if (d.curDpi == d.physDpi && previousBaseDpi > 0 && previousBaseDpi != d.physDpi) {
+                    previousBaseDpi
+                } else {
+                    d.curDpi
+                }
+                p.baseW = d.curW
+                p.baseH = d.curH
+                p.baseSizeOverride = d.curW != d.physW || d.curH != d.physH
+                p.baseDensityOverride = p.baseDpi != d.physDpi
+            } else if (p.baseDpi <= 0) {
+                p.baseDpi = d.curDpi
+            } else if (p.baseDpi != d.physDpi) {
+                p.baseDensityOverride = true
+            }
             val plan = Stretch.plan(d.physW, d.physH, p.baseDpi, k, wide, res)
-            val cmd = if (plan.isDefault) "wm size reset; wm density reset"
+            val cmd = if (plan.isDefault) restoreCommand(p, d)
                       else "wm size ${plan.wmSize}; wm density ${plan.density}"
             Shizu.exec(cmd) { out ->
                 p.active = !plan.isDefault
@@ -52,7 +67,7 @@ object Engine {
                     main.postDelayed({
                         stretch(app, plan, d, p.fill && !plan.isDefault) { sMsg ->
                             refresh(app) {
-                                val head = if (plan.isDefault) "Đã về mặc định"
+                                val head = if (plan.isDefault) "Đã khôi phục thiết lập trước đó"
                                            else "Đã áp dụng ${plan.wmSize} @${plan.density}dpi (${fmtK(plan.k)})"
                                 cb("$head\n$sMsg")
                             }
@@ -66,6 +81,7 @@ object Engine {
     /** fill=true: lấp đầy panel bằng kéo giãn thật; fill=false: trả về phép chiếu mặc định. */
     private fun stretch(app: Context, plan: Plan, d: Dev, fill: Boolean, cb: (String) -> Unit) {
         if (!Shizu.granted()) { stretchMsg = ""; cb(""); return }
+        val p = Prefs(app)
         val lnW = if (fill) plan.lnW else d.physW   // khi tắt: màn hình logic chỉ để tính vùng vừa khít mặc định
         val lnH = if (fill) plan.lnH else d.physH
         Shizu.call({ it.setStretch(lnW, lnH, d.physW, d.physH, fill) }) { r ->
@@ -76,8 +92,13 @@ object Engine {
                 else -> ""
             }
             // Sửa cảm ứng chỉ bật khi hình đã kéo giãn thành công; mọi trường hợp khác đều nhả thiết bị chạm
-            val wantTouch = fill && !r.startsWith("ERR") && Prefs(app).touch
-            Shizu.call({ it.setTouch(wantTouch, lnW, lnH, d.physW, d.physH) }) { tr ->
+            val wantTouch = fill && !r.startsWith("ERR") && p.touch
+            Shizu.call({
+                it.setTouch(
+                    wantTouch, lnW, lnH, d.physW, d.physH,
+                    p.baseW, p.baseH, p.baseDpi, p.baseSizeOverride, p.baseDensityOverride
+                )
+            }) { tr ->
                 touchMsg = tr
                 cb(head + when {
                     !wantTouch -> ""
@@ -97,18 +118,37 @@ object Engine {
         val app = ctx.applicationContext
         val p = Prefs(app)
         if (!Shizu.granted()) { cb("Cần Shizuku để reset (hoặc chạy: adb shell wm size reset)"); return }
-        Shizu.call({ it.setTouch(false, 0, 0, 0, 0) }) {}   // nhả cảm ứng TRƯỚC khi đổi lại hiển thị
-        Shizu.exec("wm size reset; wm density reset") {
-            p.active = false; p.k = 1f
-            // trả phép chiếu SurfaceFlinger về mặc định và dừng canh gác
-            main.postDelayed({
-                refresh(app) { d ->
-                    Shizu.call({ it.setStretch(d.physW, d.physH, d.physW, d.physH, false) }) { r ->
-                        stretchMsg = r
-                        cb("Đã reset về màn hình mặc định")
+        Shizu.call({ it.setTouch(false, 0, 0, 0, 0, 0, 0, 0, false, false) }) {}   // nhả cảm ứng TRƯỚC khi đổi lại hiển thị
+        refresh(app) { d ->
+            Shizu.exec(restoreCommand(p, d)) {
+                p.active = false; p.k = 1f
+                // trả phép chiếu SurfaceFlinger về mặc định và dừng canh gác
+                main.postDelayed({
+                    refresh(app) { restored ->
+                        Shizu.call({ it.setStretch(restored.physW, restored.physH, restored.physW, restored.physH, false) }) { r ->
+                            stretchMsg = r
+                            cb("Đã reset về thiết lập màn hình trước khi áp dụng StretchX")
+                        }
                     }
-                }
-            }, 350)
+                }, 350)
+            }
         }
+    }
+
+    private fun restoreCommand(p: Prefs, d: Dev): String {
+        if (!p.baseDensityOverride && p.baseDpi > 0 && p.baseDpi != d.physDpi) {
+            p.baseDensityOverride = true
+        }
+        val size = if (p.baseSizeOverride && p.baseW > 0 && p.baseH > 0) {
+            "wm size ${p.baseW}x${p.baseH}"
+        } else {
+            "wm size reset"
+        }
+        val density = if (p.baseDensityOverride && p.baseDpi > 0) {
+            "wm density ${p.baseDpi}"
+        } else {
+            "wm density reset"
+        }
+        return "$size; $density"
     }
 }

@@ -224,7 +224,7 @@ class MainActivity : Activity() {
     private fun toggleTouch() {
         if (prefs.touch) {
             prefs.touch = false; buildUi()
-            Shizu.call({ it.setTouch(false, 0, 0, 0, 0) }) { toast("Đã tắt sửa cảm ứng") }
+            Shizu.call({ it.setTouch(false, 0, 0, 0, 0, 0, 0, 0, false, false) }) { toast("Đã tắt sửa cảm ứng") }
             return
         }
         AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)

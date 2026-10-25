@@ -18,8 +18,12 @@ class ShellService() : IShell.Stub() {
 
     override fun diag(): String = try { Sf.diag() } catch (t: Throwable) { "ERR: ${t.message}" }
 
-    override fun setTouch(on: Boolean, lnW: Int, lnH: Int, physW: Int, physH: Int): String = try {
-        Touch.set(on, lnW, lnH, physW, physH)
+    override fun setTouch(
+        on: Boolean, lnW: Int, lnH: Int, physW: Int, physH: Int,
+        baseW: Int, baseH: Int, baseDpi: Int,
+        baseSizeOverride: Boolean, baseDensityOverride: Boolean
+    ): String = try {
+        Touch.set(on, lnW, lnH, physW, physH, baseW, baseH, baseDpi, baseSizeOverride, baseDensityOverride)
     } catch (t: Throwable) {
         "ERR: ${t.javaClass.simpleName}: ${t.message}"
     }

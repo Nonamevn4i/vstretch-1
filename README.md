@@ -23,7 +23,7 @@ APK ký bằng debug key nên cài thẳng được; muốn phát hành thì t�
 1. Cài & mở **Shizuku**, bấm Start (Gỡ lỗi không dây: Android 11+ không cần PC).
 2. Mở StretchX → **Cấp quyền** Shizuku.
 3. Chọn hệ số / hướng / % độ phân giải → **Áp dụng**. Hoặc bấm preset 16:9, 2:1, 21:9 (tự tính theo tỉ lệ máy).
-4. **Bật cửa sổ nổi** → thoát app, mở game, chạm bong bóng để chỉnh. **Reset** = về mặc định.
+4. **Bật cửa sổ nổi** → thoát app, mở game, chạm bong bóng để chỉnh. **Reset** = khôi phục kích thước và mật độ đang dùng trước khi áp dụng StretchX.
 5. Nút “Mở game & áp dụng” áp dụng trước rồi mở Valorant CN (khuyên dùng).
 
 ## Cách "kéo giãn thật" hoạt động (v2.0)
@@ -73,7 +73,7 @@ chỉ cần **xoay màn hình một lần** hoặc **khởi động lại máy**
 
 **An toàn:** mặc định TẮT. Bật bằng nút "Sửa cảm ứng" rồi bấm "Áp dụng".
 * Chèn thất bại 5 lần liên tiếp → tự nhả cảm ứng như cũ.
-* **Bấm Volume+ 3 lần trong 2.5 giây → khôi phục khẩn cấp** (nhả cảm ứng, `wm size/density reset`, hiển thị về mặc định).
+* **Bấm Volume+ 3 lần trong 2.5 giây → khôi phục khẩn cấp** (nhả cảm ứng, khôi phục kích thước và mật độ trước khi áp dụng StretchX).
 * Đóng app / dừng Shizuku → kernel tự nhả thiết bị chạm.
 * Nút "Chẩn đoán" hiện thêm mục "Sửa cảm ứng" (thiết bị chạm, số sự kiện đã chèn, lỗi gần nhất).
 

@@ -20,7 +20,9 @@ interface IShell {
      * Sửa cảm ứng khi kéo giãn thật (xem Touch.kt): giữ thiết bị chạm và phát lại chạm đúng toạ độ hình đã kéo giãn.
      * on=false: nhả thiết bị chạm. Kích thước theo hướng tự nhiên của máy. Trả về "OK: ..." hoặc "ERR: ...".
      */
-    String setTouch(boolean on, int lnW, int lnH, int physW, int physH) = 4;
+    String setTouch(boolean on, int lnW, int lnH, int physW, int physH,
+                    int baseW, int baseH, int baseDpi,
+                    boolean baseSizeOverride, boolean baseDensityOverride) = 4;
 
     /** Văn bản chẩn đoán phần sửa cảm ứng. */
     String touchDiag() = 5;

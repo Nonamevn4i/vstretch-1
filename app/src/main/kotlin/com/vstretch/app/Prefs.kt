@@ -20,6 +20,11 @@ class Prefs(c: Context) {
     var active: Boolean get() = sp.getBoolean("active", false); set(v) = sp.edit().putBoolean("active", v).apply()
     /** DPI gốc trước khi app can thiệp */
     var baseDpi: Int get() = sp.getInt("baseDpi", 0); set(v) = sp.edit().putInt("baseDpi", v).apply()
+    /** Kích thước wm ban đầu trước khi app can thiệp */
+    var baseW: Int get() = sp.getInt("baseW", 0); set(v) = sp.edit().putInt("baseW", v).apply()
+    var baseH: Int get() = sp.getInt("baseH", 0); set(v) = sp.edit().putInt("baseH", v).apply()
+    var baseSizeOverride: Boolean get() = sp.getBoolean("baseSizeOverride", false); set(v) = sp.edit().putBoolean("baseSizeOverride", v).apply()
+    var baseDensityOverride: Boolean get() = sp.getBoolean("baseDensityOverride", false); set(v) = sp.edit().putBoolean("baseDensityOverride", v).apply()
     var bx: Int get() = sp.getInt("bx", 40); set(v) = sp.edit().putInt("bx", v).apply()
     var by: Int get() = sp.getInt("by", 240); set(v) = sp.edit().putInt("by", v).apply()
     var xdpi: Float get() = sp.getFloat("xdpi", 0f); set(v) = sp.edit().putFloat("xdpi", v).apply()

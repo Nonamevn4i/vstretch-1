@@ -32,7 +32,11 @@ object Touch {
     private const val EVIOCGRAB = 0x40044590          // _IOW('E', 0x90, int)
     private const val EMERGENCY_PRESSES = 3
 
-    private class Cfg(val lnW: Int, val lnH: Int, val pw: Int, val ph: Int)
+    private class Cfg(
+        val lnW: Int, val lnH: Int, val pw: Int, val ph: Int,
+        val baseW: Int, val baseH: Int, val baseDpi: Int,
+        val baseSizeOverride: Boolean, val baseDensityOverride: Boolean
+    )
     private class TDev(val path: String, val name: String, val minX: Int, val maxX: Int, val minY: Int, val maxY: Int)
     private class Mt {
         val x = IntArray(MAXS); val y = IntArray(MAXS)
@@ -61,13 +65,17 @@ object Touch {
     // ------------------------------------------------------------------ API cho ShellService
 
     /** on=true: bật/cập nhật ánh xạ. on=false: nhả thiết bị chạm. kích thước theo hướng tự nhiên của máy. */
-    fun set(on: Boolean, lnW: Int, lnH: Int, pw: Int, ph: Int): String = synchronized(lock) {
+    fun set(
+        on: Boolean, lnW: Int, lnH: Int, pw: Int, ph: Int,
+        baseW: Int, baseH: Int, baseDpi: Int,
+        baseSizeOverride: Boolean, baseDensityOverride: Boolean
+    ): String = synchronized(lock) {
         if (!on) {
             if (running) stopLocked("tắt theo yêu cầu")
             return@synchronized "OK: sửa cảm ứng đang tắt"
         }
         if (lnW <= 0 || lnH <= 0 || pw <= 0 || ph <= 0) return@synchronized "ERR: kích thước không hợp lệ"
-        cfg = Cfg(lnW, lnH, pw, ph)
+        cfg = Cfg(lnW, lnH, pw, ph, baseW, baseH, baseDpi, baseSizeOverride, baseDensityOverride)
         if (running) return@synchronized "OK: đã cập nhật ánh xạ cảm ứng ($info)"
         startLocked()
     }
@@ -334,7 +342,9 @@ object Touch {
         val c = cfg
         synchronized(lock) { if (running) stopLocked("KHẨN CẤP: $why") }
         try { if (c != null) Sf.set(c.lnW, c.lnH, c.pw, c.ph, false) } catch (_: Throwable) {}
-        try { ProcessBuilder("sh", "-c", "wm size reset; wm density reset").redirectErrorStream(true).start().waitFor() } catch (_: Throwable) {}
-        info = "KHẨN CẤP ($why): đã nhả cảm ứng, trả wm size/density + hiển thị về mặc định"
+        val size = if (c != null && c.baseSizeOverride && c.baseW > 0 && c.baseH > 0) "wm size ${c.baseW}x${c.baseH}" else "wm size reset"
+        val density = if (c != null && c.baseDensityOverride && c.baseDpi > 0) "wm density ${c.baseDpi}" else "wm density reset"
+        try { ProcessBuilder("sh", "-c", "$size; $density").redirectErrorStream(true).start().waitFor() } catch (_: Throwable) {}
+        info = "KHẨN CẤP ($why): đã nhả cảm ứng và khôi phục wm size/density ban đầu"
     }
 }
