@@ -52,7 +52,7 @@ object Shizu {
     /** Chạy [block] trên service shell (luồng nền), trả kết quả về main thread. */
     fun call(block: (IShell) -> String, done: (String) -> Unit) {
         if (!granted()) { main.post { done("ERR: Shizuku chưa chạy hoặc chưa cấp quyền") }; return }
-        val job = {
+        val job: () -> Unit = {
             val r = try {
                 val s = svc
                 if (s == null) "ERR: service chưa sẵn sàng" else block(s)
