@@ -14,7 +14,7 @@ Tối ưu bố cục 2 cột cho tablet (RedMagic Astra: 2400×1504, 16:10).
 
 **Cách 2 – Android Studio**
 Mở thư mục này → Sync → **Build > Build APK(s)**. File ở `app/build/outputs/apk/release/`.
-(Hoặc dòng lệnh: `gradle :app:assembleRelease` với Gradle 8.7, JDK 17.)
+(Hoặc dòng lệnh: `./gradlew :app:assembleRelease` hoặc `gradle :app:assembleRelease` với Gradle 8.7, JDK 17.)
 Nếu Gradle báo `SDK location not found`, tạo file `local.properties` với dòng `sdk.dir=/đường/dẫn/đến/Android/Sdk` (hoặc để `ANDROID_HOME`/`ANDROID_SDK_ROOT` đã được cài đặt).
 
 APK ký bằng debug key nên cài thẳng được; muốn phát hành thì tự ký lại bằng keystore của bạn.
