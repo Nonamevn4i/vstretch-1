@@ -25,6 +25,15 @@ object Stretch {
     private const val MIN_SHORT = 480   // sàn độ phân giải để không "dãn quá mức"
     private const val MIN_LONG = 800
 
+    /**
+     * Khi kéo giãn thật, hệ thống vẫn ánh xạ cảm ứng theo vùng "vừa khít" cũ (có viền), còn hình thì bị kéo ra toàn panel.
+     * => dải viền cũ (mỗi bên) không nhận chạm và vùng gần nó bị lệch. Hàm trả về bề dày dải đó (px, mỗi bên).
+     */
+    fun deadPx(physW: Int, physH: Int, k: Float, wide: Boolean): Int {
+        val side = if (wide) min(physW, physH) else max(physW, physH)
+        return (side * (1f - 1f / k) / 2f).roundToInt()
+    }
+
     private fun even(x: Float) = (x.roundToInt() / 2) * 2
 
     /**

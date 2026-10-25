@@ -11,8 +11,8 @@ android {
         applicationId = "com.vstretch.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "2.0"
+        versionCode = 2400
+        versionName = "2.4.0"
         // App không có mã native -> chạy thuần trên arm64-v8a; filter để chắc chắn không lẫn ABI khác
         ndk { abiFilters += listOf("arm64-v8a") }
     }

@@ -42,12 +42,13 @@ nên **không bị khóa tỉ lệ** và không biết gì về việc kéo giã
   xoay màn hình, và **tự dừng** nếu kích thước logic bị đổi từ nơi khác (adb/app khác) để không ép phép chiếu cũ.
 
 ## Giới hạn quan trọng (đọc kỹ)
-* **Kéo giãn thật chỉ biến đổi hình ảnh, không biến đổi sự kiện cảm ứng.** Nếu game giới hạn vùng nhận chạm theo khung hình ban đầu,
-  phần hình được kéo vào viền có thể không nhận chạm hoặc vị trí chạm bị lệch. Cử chỉ vuốt cạnh trên một số ROM cũng có thể bị ảnh hưởng.
-  Shizuku chạy với quyền shell không có quyền sửa ánh xạ cảm ứng hệ thống (`SET_INPUT_CALIBRATION` chỉ dành cho hệ thống); muốn chạm
-  chính xác ở mọi mép, hãy tắt **Kéo giãn thật** hoặc dùng chế độ/tỉ lệ màn hình được game hỗ trợ. Không thể khắc phục an toàn chỉ bằng phép chiếu SurfaceFlinger.
-* Kéo "Rộng" = màn hình ảo rộng hơn tỉ lệ máy → hình kéo giãn theo chiều **dọc**. "Hẹp" = ngược lại → kéo giãn theo chiều **ngang**
-  (kiểu "4:3 kéo giãn" quen thuộc: mục tiêu trông to bề ngang hơn).
+* **Cảm ứng (v2.4):** hệ thống vẫn ánh xạ chạm theo vùng "vừa khít" cũ (có viền), còn hình bị kéo ra toàn panel.
+  Vì vậy dải viền cũ không nhận chạm. Để **2 cạnh trái/phải luôn chạm/vuốt được**, khi bật *Kéo giãn thật* app **luôn dùng hướng Rộng**
+  (màn hình ảo rộng hơn tỉ lệ máy, giống Cat Resolution: 2340×1080 → 2995×1080 ở 1.28x). Khi đó dải không nhận chạm nằm ở **trên/dưới**
+  (bề dày hiện ngay trong app, ví dụ 1.28x trên 2400×1504 ≈ 165 px mỗi bên) và vùng sát dải đó bị lệch theo chiều dọc; hạ hệ số để dải mỏng đi.
+  Hướng **Hẹp** (kéo ngang) làm chết cảm ứng 2 cạnh trái/phải nên bị khóa khi bật Kéo giãn thật — muốn dùng thì tắt Kéo giãn thật (có viền đen, cảm ứng chuẩn).
+  Chạm chuẩn tuyệt đối trên toàn panel cùng lúc với hình kéo méo cần sửa ánh xạ cảm ứng của hệ thống (shell/Shizuku không có quyền).
+* "Rộng" = màn hình ảo rộng hơn tỉ lệ máy → hình được kéo giãn theo chiều **dọc** khi lấp đầy. "Hẹp" = ngược lại (kéo ngang, kiểu 4:3 stretch) — chỉ dùng khi tắt Kéo giãn thật.
 * Mức tối đa tự giảm trên máy độ phân giải thấp (sàn 800×480 để không dãn quá mức).
 * Đổi kích thước khi đang trong trận có thể làm game tải lại/văng → áp dụng trước khi vào game.
 * Phụ thuộc API ẩn của Android (10 → 16). Nếu ROM của hãng chặn/đổi API, mục **Chẩn đoán** sẽ báo rõ bước nào lỗi và app tự

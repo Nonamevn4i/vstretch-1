@@ -178,8 +178,11 @@ class MainActivity : Activity() {
         c.addView(row(*presets.toTypedArray()))
 
         c.addView(row(
-            Ui.btn(this, "Rộng (viền trên/dưới)", if (prefs.wide) Ui.RED else Ui.GRAY) { prefs.wide = true; buildUi() },
-            Ui.btn(this, "Hẹp (viền trái/phải)", if (!prefs.wide) Ui.RED else Ui.GRAY) { prefs.wide = false; buildUi() }
+            Ui.btn(this, if (prefs.fill) "Rộng (cảm ứng 2 cạnh chuẩn)" else "Rộng (viền trên/dưới)", if (prefs.effWide) Ui.RED else Ui.GRAY) { prefs.wide = true; buildUi() },
+            Ui.btn(this, if (prefs.fill) "Hẹp (tắt khi kéo giãn thật)" else "Hẹp (viền trái/phải)", if (!prefs.effWide) Ui.RED else Ui.GRAY) {
+                if (prefs.fill) toast("Hẹp (kéo ngang) làm chết cảm ứng 2 cạnh trái/phải khi bật Kéo giãn thật. Muốn dùng Hẹp: tắt Kéo giãn thật (có viền đen nhưng cảm ứng chuẩn).")
+                else { prefs.wide = false; buildUi() }
+            }
         ))
         c.addView(row(
             Ui.btn(this, if (prefs.fill) "Kéo giãn thật: BẬT" else "Kéo giãn thật: TẮT", if (prefs.fill) Ui.RED else Ui.GRAY) {
@@ -192,18 +195,18 @@ class MainActivity : Activity() {
         }.toTypedArray()))
         c.addView(infoTv!!)
         c.addView(row(
-            Ui.btn(this, "Áp dụng") { Engine.apply(this, prefs.k, prefs.wide, prefs.res) { m -> toast(m); reload() } },
+            Ui.btn(this, "Áp dụng") { Engine.apply(this, prefs.k, prefs.effWide, prefs.res) { m -> toast(m); reload() } },
             Ui.btn(this, "Reset mặc định", Ui.GRAY) { Engine.reset(this) { m -> toast(m); reload() } }
         ))
         c.addView(note("Hàng 100%–60% là tỉ lệ độ phân giải (giảm để nhẹ máy hơn). DPI tự bù để giao diện không đổi kích thước."))
-        c.addView(note("“Kéo giãn thật” ép SurfaceFlinger kéo hình ra TOÀN BỘ panel (hết viền đen). Cảm ứng không được kéo theo; game có thể không nhận chạm ở vùng viền vừa lấp đầy."))
+        c.addView(note("“Kéo giãn thật” kéo hình ra TOÀN BỘ panel (hết viền đen) và luôn dùng hướng Rộng, giống Cat Resolution: 2 cạnh trái/phải nhận chạm chuẩn; chỉ dải mỏng trên/dưới (số px ở dòng thông tin) không nhận chạm và vùng sát nó bị lệch dọc. Giảm hệ số để dải này mỏng đi."))
         updatePreview()
         return c
     }
 
     private fun updatePreview() {
         val d = dev
-        val p = Engine.planFor(this, prefs.k, prefs.wide, prefs.res)
+        val p = Engine.planFor(this, prefs.k, prefs.effWide, prefs.res)
         if (p != null && abs1(p.k - prefs.k)) {            // bị kẹp theo giới hạn độ phân giải của máy
             prefs.k = p.k; seek?.progress = ((p.k - 1f) * 100).roundToInt()
         }
@@ -212,9 +215,10 @@ class MainActivity : Activity() {
             "Màn hình ảo: ${p.vl}×${p.vs} (${DeviceInfo.aspectLabel(p.vl, p.vs)})\n" +
             "DPI: ${if (prefs.active && prefs.baseDpi > 0) prefs.baseDpi else d.curDpi} → ${p.density}\n" +
             (if (prefs.fill && !p.isDefault)
-                "Viền đen: 0% — lấp đầy bằng kéo giãn ${if (prefs.wide) "dọc" else "ngang"} ${fmtK(p.k)}\n"
+                "Viền đen: 0% — lấp đầy bằng kéo giãn dọc ${fmtK(p.k)}\n" +
+                "Cảm ứng: trái/phải chuẩn · dải trên/dưới mỗi bên ≈ ${Stretch.deadPx(d.physW, d.physH, p.k, true)} px không nhận chạm\n"
             else
-                String.format(Locale.US, "Viền đen: ≈ %.1f%% %s\n", p.barPct, if (prefs.wide) "(trên/dưới)" else "(trái/phải)")) +
+                String.format(Locale.US, "Viền đen: ≈ %.1f%% %s\n", p.barPct, if (prefs.effWide) "(trên/dưới)" else "(trái/phải)")) +
             "Mức kéo tối đa an toàn cho máy này: ${fmtK(p.maxK)}"
     }
 
@@ -234,7 +238,7 @@ class MainActivity : Activity() {
         val label = try { packageManager.getApplicationInfo(pkg, 0).loadLabel(packageManager).toString() } catch (_: Exception) { null }
         val c = card("Game", Ui.tv(this, if (label != null) "$label\n$pkg — đã cài ✔" else "$pkg\nChưa cài hoặc không thấy", 13f, if (label != null) Ui.OK else Ui.TEXT))
         c.addView(row(
-            Ui.btn(this, "Mở game & áp dụng") { Engine.apply(this, prefs.k, prefs.wide, prefs.res) { m -> toast(m); Handler(Looper.getMainLooper()).postDelayed({ launchGame() }, 700) } },
+            Ui.btn(this, "Mở game & áp dụng") { Engine.apply(this, prefs.k, prefs.effWide, prefs.res) { m -> toast(m); Handler(Looper.getMainLooper()).postDelayed({ launchGame() }, 700) } },
             Ui.btn(this, "Chọn game khác", Ui.GRAY) { pickGame() }
         ))
         if (pkg != Prefs.GAME_VALORANT_CN) c.addView(row(Ui.btn(this, "Dùng Valorant CN (无畏契约)", Ui.GRAY) { prefs.game = Prefs.GAME_VALORANT_CN; buildUi() }))

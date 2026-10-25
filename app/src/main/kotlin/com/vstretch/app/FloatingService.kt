@@ -114,8 +114,8 @@ class FloatingService : Service() {
         }
 
         dirBtn = Ui.btn(this, dirLabel(), Ui.GRAY) {
-            prefs.wide = !prefs.wide; dirBtn.text = dirLabel()
-            if (prefs.k > 1f) applyK(prefs.k) else syncUi()
+            if (prefs.fill) { toast("Kéo giãn thật luôn dùng hướng Rộng (để 2 cạnh trái/phải nhận chạm). Tắt Kéo giãn thật trong app nếu muốn dùng Hẹp.") }
+            else { prefs.wide = !prefs.wide; dirBtn.text = dirLabel(); if (prefs.k > 1f) applyK(prefs.k) else syncUi() }
         }
 
         panel = LinearLayout(this).apply {
@@ -177,7 +177,7 @@ class FloatingService : Service() {
         Engine.refresh(this) { syncUi() }
     }
 
-    private fun dirLabel() = if (prefs.wide) "Hướng: Rộng" else "Hướng: Hẹp"
+    private fun dirLabel() = if (prefs.effWide) "Hướng: Rộng" else "Hướng: Hẹp"
 
     private fun toggle() {
         panel.visibility = if (panel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
@@ -204,17 +204,17 @@ class FloatingService : Service() {
         valueTv.text = fmtK(prefs.k)
         seek.progress = ((prefs.k - 1f) * 100).roundToInt()
         dirBtn.text = dirLabel()
-        val p = Engine.planFor(this, prefs.k, prefs.wide, prefs.res)
+        val p = Engine.planFor(this, prefs.k, prefs.effWide, prefs.res)
         infoTv.text = if (p == null) "Chưa đọc được thông tin máy"
         else "${p.vl}×${p.vs} (${DeviceInfo.aspectLabel(p.vl, p.vs)}) · " +
-            (if (prefs.fill && !p.isDefault) "lấp đầy ${fmtK(p.k)}"
+            (if (prefs.fill && !p.isDefault) "lấp đầy ${fmtK(p.k)}, chết cảm ứng trên/dưới ≈${Stretch.deadPx(Engine.dev?.physW ?: p.vl, Engine.dev?.physH ?: p.vs, p.k, true)}px"
             else "viền ≈${"%.0f".format(p.barPct)}%") +
             " · tối đa ${fmtK(p.maxK)}"
     }
 
     private fun applyK(k: Float) {
         prefs.k = k
-        Engine.apply(this, k, prefs.wide, prefs.res) { m ->
+        Engine.apply(this, k, prefs.effWide, prefs.res) { m ->
             if (m.startsWith("ERR") || m.startsWith("Cần") || m.contains("⚠")) toast(m)
             syncUi(); h.postDelayed({ clamp() }, 700)
         }

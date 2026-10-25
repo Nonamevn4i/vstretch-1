@@ -9,6 +9,8 @@ class Prefs(c: Context) {
     var k: Float get() = sp.getFloat("k", 1f); set(v) = sp.edit().putFloat("k", v).apply()
     /** true = màn hình ảo RỘNG hơn tỉ lệ máy (viền trên/dưới); false = HẸP hơn (viền trái/phải) */
     var wide: Boolean get() = sp.getBoolean("wide", true); set(v) = sp.edit().putBoolean("wide", v).apply()
+    /** Hướng thực sự dùng khi tính: Kéo giãn thật luôn ép "Rộng" để 2 cạnh trái/phải nhận chạm chuẩn */
+    val effWide: Boolean get() = fill || wide
     /** % độ phân giải (50..100) */
     var res: Int get() = sp.getInt("res", 100); set(v) = sp.edit().putInt("res", v).apply()
     /** true = lấp đầy viền đen bằng kéo giãn thật ở tầng SurfaceFlinger */
