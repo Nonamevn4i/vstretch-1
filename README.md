@@ -79,3 +79,14 @@ chỉ cần **xoay màn hình một lần** hoặc **khởi động lại máy**
 
 **Lưu ý:** đây là cơ chế thử nghiệm, chưa kiểm chứng trên mọi ROM (cần quyền EVIOCGRAB cho shell, và đường `injectInputEvent`).
 Chạm được phát lại bằng chèn sự kiện nên game/anti-cheat có thể coi là thao tác lạ.
+
+
+## v2.6.0 — Theme "RedMagic Cyber-Red" (chỉ giao diện, không đổi chức năng lõi)
+
+* **Màu:** nền đen #0A0A0A + hoa văn carbon mờ, ánh LED đỏ ở đáy; nhấn đỏ #FF2D55, cam neon #FF5722; chữ 3 cấp sáng (TEXT › MUTED › DIM).
+* **Hình khối:** phẳng, góc cắt vát (hard-edge) cho thẻ/nút/bong bóng; nút chính đỏ sáng viền, nút phụ đen xám viền mảnh (`CutDrawable` trong `Ui.kt`).
+* **Công tắc "liquid glass"** (`GlassSwitch`) thay cho nút BẬT/TẮT ở *Kéo giãn thật* và *Sửa cảm ứng* — cùng hành vi cũ.
+* **Cửa sổ nổi gọn:** bong bóng vát đỏ; bảng chỉ còn số + thanh trượt + [−] [Reset] [+]; hướng Rộng/Hẹp và thông tin nằm trong mục "Chi tiết".
+* **Hộp thoại** theo theme (`Cyber.Dialog`), theme chính `Cyber.App` (hết nháy trắng khi mở app).
+* **Logo mới:** khung cắt góc + mũi tên kéo giãn + chữ X, phát sáng đỏ; có lớp monochrome cho icon theo chủ đề Android 13+; icon thông báo riêng.
+* Không đụng tới: `Engine`, `Sf`, `Touch`, `Shizu`, `Stretch`, AIDL — toàn bộ logic giữ nguyên.

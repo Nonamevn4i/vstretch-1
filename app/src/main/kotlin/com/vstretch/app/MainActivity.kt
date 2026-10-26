@@ -82,15 +82,20 @@ class MainActivity : Activity() {
                 cards.forEach { addView(it) }
             }
         }
-        setContentView(ScrollView(this).apply { setBackgroundColor(Ui.BG); addView(body) })
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(Ui.header(this@MainActivity, "TRUE STRETCH · SHIZUKU · REDMAGIC EDITION · v${BuildConfig.VERSION_NAME}"))
+            addView(body)
+        }
+        setContentView(ScrollView(this).apply { background = Ui.carbon(this@MainActivity); addView(page) })
     }
 
     private fun card(title: String, vararg views: View) = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        background = Ui.round(Ui.CARD, dp(16).toFloat())
-        setPadding(dp(16), dp(14), dp(16), dp(16))
+        background = Ui.panel(context)
+        setPadding(dp(18), dp(16), dp(18), dp(16))
         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { setMargins(dp(5), dp(5), dp(5), dp(5)) }
-        addView(Ui.tv(context, title, 16f, Ui.TEXT, true).apply { setPadding(0, 0, 0, dp(8)) })
+        addView(Ui.title(context, title))
         views.forEach { addView(it) }
     }
 
@@ -150,9 +155,12 @@ class MainActivity : Activity() {
 
     // ---- Kéo dãn
     private fun stretchCard(d: Dev?): View {
-        bigTv = Ui.tv(this, fmtK(prefs.k), 40f, Ui.RED, true).apply { gravity = Gravity.CENTER }
+        bigTv = Ui.tv(this, fmtK(prefs.k), 44f, Ui.RED, true).apply {
+            gravity = Gravity.CENTER; letterSpacing = 0.04f; Ui.glowText(this, Ui.RED, 14f)
+        }
         infoTv = Ui.tv(this, "", 13f, Ui.TEXT).apply { setPadding(0, dp(8), 0, 0) }
         seek = SeekBar(this).apply {
+            Ui.seek(this)
             max = 50; progress = ((prefs.k - 1f) * 100).roundToInt()
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(s: SeekBar, p: Int, fromUser: Boolean) {
@@ -181,11 +189,9 @@ class MainActivity : Activity() {
             Ui.btn(this, "Rộng (viền trên/dưới)", if (prefs.wide) Ui.RED else Ui.GRAY) { prefs.wide = true; buildUi() },
             Ui.btn(this, "Hẹp (viền trái/phải)", if (!prefs.wide) Ui.RED else Ui.GRAY) { prefs.wide = false; buildUi() }
         ))
-        c.addView(row(
-            Ui.btn(this, if (prefs.fill) "Kéo giãn thật: BẬT" else "Kéo giãn thật: TẮT", if (prefs.fill) Ui.RED else Ui.GRAY) { prefs.fill = !prefs.fill; buildUi() },
-            Ui.btn(this, if (prefs.touch) "Sửa cảm ứng: BẬT" else "Sửa cảm ứng: TẮT", if (prefs.touch) Ui.RED else Ui.GRAY) { toggleTouch() },
-            Ui.btn(this, "Chẩn đoán", Ui.GRAY) { showDiag() }
-        ))
+        c.addView(Ui.switchRow(this, "Kéo giãn thật", "Lấp đầy viền đen bằng SurfaceFlinger", prefs.fill) { prefs.fill = !prefs.fill; buildUi() })
+        c.addView(Ui.switchRow(this, "Sửa cảm ứng", "Modo Pro · thử nghiệm", prefs.touch) { toggleTouch() })
+        c.addView(row(Ui.btn(this, "Chẩn đoán", Ui.GRAY) { showDiag() }))
         c.addView(row(*listOf(100, 90, 80, 70, 60).map { r ->
             Ui.btn(this, "$r%", if (prefs.res == r) Ui.RED else Ui.GRAY) { prefs.res = r; buildUi() }
         }.toTypedArray()))
@@ -227,7 +233,7 @@ class MainActivity : Activity() {
             Shizu.call({ it.setTouch(false, 0, 0, 0, 0, 0, 0, 0, false, false) }) { toast("Đã tắt sửa cảm ứng") }
             return
         }
-        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+        AlertDialog.Builder(this, R.style.Cyber_Dialog)
             .setTitle("Bật sửa cảm ứng (thử nghiệm)")
             .setMessage("App sẽ giữ thiết bị cảm ứng và tự phát lại mỗi lần chạm đúng vị trí trên hình đã kéo giãn, nhờ đó 2 cạnh vẫn ấn/vuốt được.\n\n" +
                 "• Cảm ứng bị kẹt: bấm Volume+ 3 lần liên tiếp để khôi phục khẩn cấp (hoặc giữ nguồn để khởi động lại).\n" +
@@ -239,7 +245,7 @@ class MainActivity : Activity() {
     }
 
     private fun showDiag() = Engine.diag { text ->
-        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+        AlertDialog.Builder(this, R.style.Cyber_Dialog)
             .setTitle("Chẩn đoán kéo giãn")
             .setMessage(text)
             .setPositiveButton("Đóng", null)
@@ -271,7 +277,7 @@ class MainActivity : Activity() {
         val list = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
             .map { it.activityInfo.packageName to it.loadLabel(pm).toString() }
             .distinctBy { it.first }.sortedBy { it.second.lowercase() }
-        AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+        AlertDialog.Builder(this, R.style.Cyber_Dialog)
             .setTitle("Chọn game")
             .setItems(list.map { "${it.second}\n${it.first}" }.toTypedArray()) { _, i -> prefs.game = list[i].first; buildUi() }
             .show()

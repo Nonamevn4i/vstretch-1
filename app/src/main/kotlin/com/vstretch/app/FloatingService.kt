@@ -77,7 +77,7 @@ class FloatingService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         val n = Notification.Builder(this, "float")
-            .setSmallIcon(android.R.drawable.ic_menu_crop)
+            .setSmallIcon(R.drawable.ic_stat)
             .setContentTitle("StretchX đang chạy")
             .setContentText("Bong bóng nổi đang bật")
             .addAction(Notification.Action.Builder(Icon.createWithResource(this, android.R.drawable.ic_menu_revert), "Reset màn hình", pi(ACTION_RESET)).build())
@@ -92,12 +92,13 @@ class FloatingService : Service() {
 
     private fun buildOverlay() {
         bubble = Ui.tv(this, fmtK(prefs.k), 12f, Color.WHITE, true).apply {
-            gravity = Gravity.CENTER; background = Ui.oval(0xEEFF4655.toInt())
+            gravity = Gravity.CENTER; background = Ui.bubbleBg(context)
         }
-        valueTv = Ui.tv(this, fmtK(prefs.k), 22f, Ui.RED, true)
+        valueTv = Ui.tv(this, fmtK(prefs.k), 24f, Ui.RED, true).apply { Ui.glowText(this, Ui.RED, 8f) }
         infoTv = Ui.tv(this, "", 11f, Ui.MUTED)
 
         seek = SeekBar(this).apply {
+            Ui.seek(this)
             max = 50; progress = ((prefs.k - 1f) * 100).roundToInt()
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(s: SeekBar, p: Int, fromUser: Boolean) { if (fromUser) valueTv.text = fmtK(1f + p / 100f) }
@@ -116,30 +117,46 @@ class FloatingService : Service() {
             if (prefs.k > 1f) applyK(prefs.k) else syncUi()
         }
 
+        // Bảng gọn: chỉ số + thanh trượt + [−][Reset][+]. Hướng & thông tin nằm trong mục "Chi tiết".
+        val extra = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; visibility = View.GONE
+            addView(row(dirBtn))
+            addView(infoTv.apply { setPadding(0, dp(8), 0, 0) })
+        }
+        val more = Ui.tv(this, "CHI TIẾT ▾", 10f, Ui.DIM, true).apply {
+            gravity = Gravity.CENTER; letterSpacing = 0.1f; setPadding(0, dp(8), 0, dp(2))
+            setOnClickListener {
+                val show = extra.visibility != View.VISIBLE
+                extra.visibility = if (show) View.VISIBLE else View.GONE
+                text = if (show) "THU GỌN ▴" else "CHI TIẾT ▾"
+                h.postDelayed({ clamp() }, 80)
+            }
+        }
+
         panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; visibility = View.GONE
-            background = Ui.round(0xF2101820.toInt(), dp(16).toFloat(), 0x44FFFFFF, dp(1))
-            setPadding(dp(14), dp(10), dp(14), dp(12))
+            background = Ui.overlayPanel(this@FloatingService)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
             val head = LinearLayout(this@FloatingService).apply {
                 orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-                addView(Ui.tv(this@FloatingService, "StretchX", 14f, Ui.TEXT, true), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-                addView(Ui.btn(this@FloatingService, "Thu nhỏ", Ui.GRAY) { toggle() })
+                addView(valueTv, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                addView(Ui.btn(this@FloatingService, "✕", Ui.GRAY) { toggle() })
             }
             addView(head)
-            addView(valueTv)
             addView(seek)
             addView(row(
-                Ui.btn(this@FloatingService, "−0.05", Ui.GRAY) { applyK((prefs.k - 0.05f).coerceAtLeast(1f)) },
-                Ui.btn(this@FloatingService, "+0.05", Ui.GRAY) { applyK((prefs.k + 0.05f).coerceAtMost(Stretch.MAX)) }
+                Ui.btn(this@FloatingService, "−", Ui.GRAY) { applyK((prefs.k - 0.05f).coerceAtLeast(1f)) },
+                Ui.btn(this@FloatingService, "Reset", Ui.RED) { doReset() },
+                Ui.btn(this@FloatingService, "+", Ui.GRAY) { applyK((prefs.k + 0.05f).coerceAtMost(Stretch.MAX)) }
             ))
-            addView(row(dirBtn, Ui.btn(this@FloatingService, "Reset", Ui.RED) { doReset() }))
-            addView(infoTv.apply { setPadding(0, dp(8), 0, 0) })
+            addView(more)
+            addView(extra)
         }
 
         val rootView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             addView(bubble, LinearLayout.LayoutParams(dp(52), dp(52)))
-            addView(panel, LinearLayout.LayoutParams(dp(260), LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+            addView(panel, LinearLayout.LayoutParams(dp(240), LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
         }
 
         root = rootView

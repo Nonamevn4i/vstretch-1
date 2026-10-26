@@ -21,7 +21,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="StretchX"
         android:resizeableActivity="true"
-        android:theme="@android:style/Theme.Material.NoActionBar">
+        android:theme="@style/Cyber.App">
 
         <provider
             android:name="rikka.shizuku.ShizukuProvider"
