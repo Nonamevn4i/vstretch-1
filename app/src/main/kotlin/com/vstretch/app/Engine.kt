@@ -122,18 +122,21 @@ object Engine {
         Shizu.call({ it.setTouch(false, 0, 0, 0, 0, 0, 0, 0, false, false) }) {}   // nhả cảm ứng TRƯỚC khi đổi lại hiển thị
         refresh(app) { _ ->
             Shizu.exec(restoreCommand()) { out ->
-                if (out.startsWith("ERR")) { cb(out); return@Shizu.exec }
-                p.active = false; p.k = 1f
-                clearRestoreSnapshot(p)
-                // trả phép chiếu SurfaceFlinger về mặc định và dừng canh gác
-                main.postDelayed({
-                    refresh(app) { restored ->
-                        Shizu.call({ it.setStretch(restored.physW, restored.physH, restored.physW, restored.physH, false) }) { r ->
-                            stretchMsg = r
-                            cb("Đã reset về thiết lập màn hình gốc của thiết bị")
+                if (out.startsWith("ERR")) {
+                    cb(out)
+                } else {
+                    p.active = false; p.k = 1f
+                    clearRestoreSnapshot(p)
+                    // trả phép chiếu SurfaceFlinger về mặc định và dừng canh gác
+                    main.postDelayed({
+                        refresh(app) { restored ->
+                            Shizu.call({ it.setStretch(restored.physW, restored.physH, restored.physW, restored.physH, false) }) { r ->
+                                stretchMsg = r
+                                cb("Đã reset về thiết lập màn hình gốc của thiết bị")
+                            }
                         }
-                    }
-                }, 350)
+                    }, 350)
+                }
             }
         }
     }
