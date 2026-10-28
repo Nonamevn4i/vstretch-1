@@ -38,7 +38,8 @@ class Prefs(c: Context) {
     /** Hồ sơ dùng gần nhất (không bị xoá khi khôi phục) -> nút "Áp dụng / Khôi phục" dùng lại. */
     var lastProfile: String get() = sp.getString("lastProfile", "")!!; set(v) = sp.edit().putString("lastProfile", v).apply()
     var gamesJson: String get() = sp.getString("games", "")!!; set(v) = sp.edit().putString("games", v).apply()
-    var historyJson: String get() = sp.getString("history", "")!!; set(v) = sp.edit().putString("history", v).apply()
+    /** DPI dùng khi khôi phục / reset. 0 = tự động (DPI trước khi app can thiệp). */
+    var resetDpi: Int get() = sp.getInt("resetDpi", 0); set(v) = sp.edit().putInt("resetDpi", v).apply()
     /** Nhấn đúp Volume − để ẩn/hiện bong bóng nổi. */
     var volHide: Boolean get() = sp.getBoolean("volHide", false); set(v) = sp.edit().putBoolean("volHide", v).apply()
     /** Hồ sơ gắn với ô phím tắt số [slot] (0..2). */

@@ -18,4 +18,12 @@
         <item name="android:textColorPrimary">@color/cyber_text</item>
         <item name="android:textColorSecondary">@color/cyber_muted</item>
     </style>
+
+    <!-- Cửa sổ nổi: không dùng animation thêm/bỏ cửa sổ của hệ thống (tránh khựng khi bật/tắt) -->
+    <style name="Cyber.NoAnim" parent="@android:style/Animation">
+        <item name="android:windowEnterAnimation">@null</item>
+        <item name="android:windowExitAnimation">@null</item>
+        <item name="android:windowShowAnimation">@null</item>
+        <item name="android:windowHideAnimation">@null</item>
+    </style>
 </resources>

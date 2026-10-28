@@ -119,10 +119,21 @@ Chạm được phát lại bằng chèn sự kiện nên game/anti-cheat có th
   chỉ dựa vào việc game còn chạy hay không.)
 * **Ẩn/hiện bong bóng bằng Volume −**: bật trong mục Cửa sổ nổi; **nhấn đúp** Volume − để ẩn/hiện (không chặn phím, âm lượng vẫn đổi bình thường).
   Thông báo cũng có nút **Ẩn/Hiện**.
-* **Lịch sử**: 30 lần áp dụng/khôi phục gần nhất (nguồn: App / Phím tắt / Nổi / Game), chạm để áp dụng lại.
 * Giao diện giữ nguyên vị trí cuộn khi bấm nút (trước đây nhảy về đầu trang).
 
 ### Thay đổi kỹ thuật
 * Mới: `Profiles.kt` (hồ sơ, game, lịch sử, `Actions`), `Tile.kt`, `SessionService.kt`, `Keys.kt`, `IKeyCb.aidl`, `ic_tile.xml`.
 * `IShell.aidl` thêm `setKeyListener` (số 6) — `Engine`, `Sf`, `Touch` **không đổi**.
-* Mọi nơi bật/tắt (app, ô phím tắt, cửa sổ nổi, phiên game) đi qua `Actions` nên hồ sơ đang bật & lịch sử luôn đồng bộ.
+* Mọi nơi bật/tắt (app, ô phím tắt, cửa sổ nổi, phiên game) đi qua `Actions` nên hồ sơ đang bật luôn đồng bộ.
+
+
+## v2.7.1 — DPI khi khôi phục, mượt hơn khi bật/tắt cửa sổ nổi, bỏ Lịch sử
+
+* **Mục “DPI khi khôi phục”**: đặt DPI (hoặc chọn nhanh theo dp: 1200 / 1000 / 900 / 800 / 720 dp) mà máy sẽ về khi bấm Reset / Khôi phục / tắt hồ sơ.
+  dp = chiều dài màn hình ÷ (DPI ÷ 160). Nút **“Dùng DPI hiện tại”** lưu nhanh mức đang dùng; **“Tự động”** = như cũ (DPI trước khi app can thiệp).
+  Sau khi reset app **kiểm tra lại DPI** và ép lại một lần nếu ROM tự đổi; khôi phục khẩn cấp (Volume+ ×3) cũng dùng đúng DPI này.
+* **Giảm giật khi bật/tắt cửa sổ nổi**: cửa sổ nổi dùng GPU (trước đây vẽ bằng CPU), bỏ animation thêm/bỏ cửa sổ của hệ thống,
+  áp lại phép chiếu kéo giãn ngay sau khi thêm/bỏ cửa sổ, canh gác kiểm tra dày hơn (0,6 giây/lần), giao diện app không còn dựng lại cả cửa sổ
+  (có bộ nhớ đệm biểu tượng game và hồ sơ, gộp các lần cập nhật).
+* Phiên game theo dõi thưa hơn (3 giây/lần) để lệnh `dumpsys` không gây khựng khi đang chơi.
+* **Đã bỏ mục Lịch sử.**

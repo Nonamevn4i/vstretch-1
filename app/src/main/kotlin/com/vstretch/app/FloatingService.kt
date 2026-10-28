@@ -54,8 +54,11 @@ class FloatingService : Service() {
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         startFg()
         Shizu.ensureBound()
-        if (Settings.canDrawOverlays(this)) { buildOverlay(); running = true; if (prefs.volHide) registerKeys() }
-        else { toast("Chưa cấp quyền cửa sổ nổi"); stopSelf() }
+        if (Settings.canDrawOverlays(this)) {
+            buildOverlay(); running = true
+            if (prefs.volHide) registerKeys()
+            onState?.invoke()
+        } else { toast("Chưa cấp quyền cửa sổ nổi"); stopSelf() }
     }
 
     override fun onStartCommand(i: Intent?, f: Int, id: Int): Int {
@@ -71,9 +74,23 @@ class FloatingService : Service() {
     override fun onDestroy() {
         running = false
         unregisterKeys()
+        val hadWindow = root != null
         root?.let { try { wm.removeView(it) } catch (_: Throwable) {} }
         root = null
+        if (hadWindow) resyncSoon(applicationContext)
+        onState?.invoke()
         super.onDestroy()
+    }
+
+    /**
+     * Thêm/bỏ cửa sổ làm hệ thống tính lại màn hình, có thể làm phép chiếu kéo giãn nháy về kiểu có viền đen
+     * trong chốc lát -> áp lại ngay vài lần (không đổi wm size/density).
+     */
+    private fun resyncSoon(app: android.content.Context) {
+        Engine.resync(app)
+        val hh = Handler(Looper.getMainLooper())
+        hh.postDelayed({ Engine.resync(app) }, 150)
+        hh.postDelayed({ Engine.resync(app) }, 450)
     }
 
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
@@ -177,9 +194,14 @@ class FloatingService : Service() {
         lp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            // FLAG_HARDWARE_ACCELERATED: cửa sổ nổi từ Service mặc định vẽ bằng CPU (software) -> giật; bật GPU cho mượt
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.TOP or Gravity.START; x = prefs.bx; y = prefs.by }
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START; x = prefs.bx; y = prefs.by
+            windowAnimations = R.style.Cyber_NoAnim
+        }
 
         bubble.setOnTouchListener(object : View.OnTouchListener {
             var sx = 0; var sy = 0; var tx = 0f; var ty = 0f; var moved = false
@@ -198,6 +220,7 @@ class FloatingService : Service() {
         })
 
         wm.addView(rootView, lp)
+        resyncSoon(applicationContext)
         Engine.refresh(this) { syncUi() }
     }
 
@@ -293,5 +316,8 @@ class FloatingService : Service() {
 
         /** Bong bóng nổi đang chạy? (để giao diện hiện đúng trạng thái) */
         @Volatile var running = false
+
+        /** Gọi (main thread) mỗi khi cửa sổ nổi bật/tắt -> giao diện cập nhật đúng 1 lần, không cần hẹn giờ. */
+        @Volatile var onState: (() -> Unit)? = null
     }
 }

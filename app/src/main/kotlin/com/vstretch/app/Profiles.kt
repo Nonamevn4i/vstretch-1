@@ -27,11 +27,6 @@ data class Profile(
 /** Một game trong danh sách; [profile] rỗng = dùng cài đặt đang chỉnh. */
 data class GameEntry(val pkg: String, val profile: String = "")
 
-data class HistoryItem(
-    val t: Long, val label: String, val k: Float, val wide: Boolean, val res: Int,
-    val src: String, val reset: Boolean
-)
-
 object Profiles {
     private fun toJson(p: Profile) = JSONObject()
         .put("id", p.id).put("name", p.name).put("k", p.k.toDouble())
@@ -52,12 +47,19 @@ object Profiles {
         Prefs(ctx).profilesJson = a.toString()
     }
 
+    // Bộ nhớ đệm theo chuỗi JSON: dựng giao diện gọi all() rất nhiều lần, không cần phân tích lại mỗi lần
+    @Volatile private var cacheRaw: String? = null
+    @Volatile private var cacheList: List<Profile> = emptyList()
+
     fun all(ctx: Context): List<Profile> {
         val raw = Prefs(ctx).profilesJson
         if (raw.isEmpty()) { val s = seed(); store(ctx, s); return s }
+        if (raw == cacheRaw) return cacheList
         return try {
             val a = JSONArray(raw)
-            (0 until a.length()).map { fromJson(a.getJSONObject(it)) }
+            val list = (0 until a.length()).map { fromJson(a.getJSONObject(it)) }
+            cacheList = list; cacheRaw = raw
+            list
         } catch (_: Throwable) {
             val s = seed(); store(ctx, s); s
         }
@@ -142,41 +144,9 @@ object Games {
         store(ctx, all(ctx).map { if (it.pkg == pkg) it.copy(profile = profileId) else it })
 }
 
-/** Lịch sử các lần áp dụng / khôi phục (tối đa 30). */
-object History {
-    private const val MAX = 30
-
-    fun all(ctx: Context): List<HistoryItem> {
-        val raw = Prefs(ctx).historyJson
-        if (raw.isEmpty()) return emptyList()
-        return try {
-            val a = JSONArray(raw)
-            (0 until a.length()).map {
-                val o = a.getJSONObject(it)
-                HistoryItem(
-                    o.optLong("t"), o.optString("n"), o.optDouble("k", 1.0).toFloat(),
-                    o.optBoolean("w", true), o.optInt("r", 100), o.optString("s"), o.optBoolean("x", false)
-                )
-            }
-        } catch (_: Throwable) { emptyList() }
-    }
-
-    fun add(ctx: Context, label: String, k: Float, wide: Boolean, res: Int, src: String, reset: Boolean = false) {
-        val list = (listOf(HistoryItem(System.currentTimeMillis(), label, k, wide, res, src, reset)) + all(ctx)).take(MAX)
-        val a = JSONArray()
-        list.forEach {
-            a.put(JSONObject().put("t", it.t).put("n", it.label).put("k", it.k.toDouble())
-                .put("w", it.wide).put("r", it.res).put("s", it.src).put("x", it.reset))
-        }
-        Prefs(ctx).historyJson = a.toString()
-    }
-
-    fun clear(ctx: Context) { Prefs(ctx).historyJson = "" }
-}
-
 /**
  * Các thao tác cấp cao dùng chung cho app, phím tắt nhanh, cửa sổ nổi và phiên game:
- * gọi Engine rồi ghi nhớ hồ sơ đang dùng + lịch sử. Callback luôn ở main thread.
+ * gọi Engine rồi ghi nhớ hồ sơ đang dùng. [src] = nơi gọi (app/tile/float/game), chỉ để gỡ lỗi. Callback luôn ở main thread.
  */
 object Actions {
     fun failed(m: String) = m.startsWith("ERR") || m.startsWith("Cần")
@@ -191,7 +161,6 @@ object Actions {
             if (!failed(m)) {
                 pr.activeProfile = p.id
                 if (p.id.isNotEmpty()) pr.lastProfile = p.id
-                History.add(app, p.name, pr.k, p.wide, p.res, src)
             }
             cb(m)
         }
@@ -202,19 +171,13 @@ object Actions {
         val app = ctx.applicationContext
         val pr = Prefs(app)
         pr.activeProfile = ""
-        Engine.apply(app, k, wide, res) { m ->
-            if (!failed(m)) History.add(app, fmtK(pr.k), pr.k, wide, res, src)
-            cb(m)
-        }
+        Engine.apply(app, k, wide, res) { m -> cb(m) }
     }
 
     fun restore(ctx: Context, src: String, cb: (String) -> Unit) {
         val app = ctx.applicationContext
         Engine.reset(app) { m ->
-            if (!failed(m)) {
-                Prefs(app).activeProfile = ""
-                History.add(app, "Khôi phục", 1f, true, 100, src, reset = true)
-            }
+            if (!failed(m)) Prefs(app).activeProfile = ""
             cb(m)
         }
     }

@@ -169,9 +169,9 @@ class SessionService : Service() {
         private const val ST_WAIT = 0
         private const val ST_IN = 1
         private const val ST_OUT = 2
-        private const val POLL_MS = 2000L
+        private const val POLL_MS = 3000L       // dumpsys khá nặng -> thưa hơn để không gây khựng khi đang chơi
         private const val WAIT_MS = 60_000L     // chờ game lên hình tối đa 60 giây
-        private const val MISS_MAX = 3          // 3 lần liên tiếp không thấy game (~6 giây) mới coi là đã rời
+        private const val MISS_MAX = 2          // 2 lần liên tiếp không thấy game (~6 giây) mới coi là đã rời
 
         /** Gói game đang có phiên (null = không có). */
         @Volatile var running: String? = null

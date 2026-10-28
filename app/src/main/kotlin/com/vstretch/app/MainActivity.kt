@@ -6,6 +6,7 @@ import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
@@ -13,7 +14,10 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.text.Editable
+import android.text.InputType
 import android.text.TextUtils
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -25,8 +29,6 @@ import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import rikka.shizuku.Shizuku
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
@@ -44,7 +46,10 @@ class MainActivity : Activity() {
     private var infoTv: TextView? = null
     private var seek: SeekBar? = null
     private var sv: ScrollView? = null
+    private var host: LinearLayout? = null
     private val ui = Handler(Looper.getMainLooper())
+    private val buildRun = Runnable { doBuild() }
+    private val iconCache = HashMap<String, Drawable?>()   // nạp biểu tượng game rất chậm -> chỉ nạp 1 lần
 
     private val binderL = Shizuku.OnBinderReceivedListener { runOnUiThread { Shizu.ensureBound(); reload() } }
     private val deadL = Shizuku.OnBinderDeadListener { runOnUiThread { reload() } }
@@ -58,10 +63,23 @@ class MainActivity : Activity() {
         Shizuku.addBinderReceivedListenerSticky(binderL)
         Shizuku.addBinderDeadListener(deadL)
         Shizuku.addRequestPermissionResultListener(permL)
-        buildUi()
+        // Khung cuộn dựng 1 lần; mỗi lần cập nhật chỉ thay nội dung bên trong (không đổi cả cửa sổ -> mượt hơn, giữ vị trí cuộn)
+        val h = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        host = h
+        val s = ScrollView(this).apply { background = Ui.carbon(this@MainActivity); addView(h) }
+        sv = s
+        setContentView(s)
+        doBuild()
     }
 
-    override fun onResume() { super.onResume(); Shizu.ensureBound(); reload() }
+    override fun onResume() {
+        super.onResume()
+        // Cửa sổ nổi bật/tắt -> cập nhật giao diện đúng 1 lần (thay cho hẹn giờ)
+        FloatingService.onState = { runOnUiThread { buildUi() } }
+        Shizu.ensureBound(); reload()
+    }
+
+    override fun onPause() { FloatingService.onState = null; super.onPause() }
 
     override fun onDestroy() {
         Shizuku.removeBinderReceivedListener(binderL)
@@ -79,17 +97,22 @@ class MainActivity : Activity() {
 
     // ---------------------------------------------------------------- UI
 
-    private fun buildUi() {
-        val keep = sv?.scrollY ?: 0      // giữ vị trí cuộn khi dựng lại giao diện
+    /** Gộp nhiều yêu cầu dựng lại trong cùng một nhịp thành 1 lần. */
+    private fun buildUi() { ui.removeCallbacks(buildRun); ui.post(buildRun) }
+
+    private fun doBuild() {
+        val h = host ?: return
+        val s = sv ?: return
+        val keep = s.scrollY
         val d = dev
         val status = statusCard(d)
         val quick = quickCard()
         val feat = featureCard()
         val stretch = stretchCard(d)
+        val resetC = resetCard(d)
         val games = gameCard()
         val tiles = tileCard()
         val fl = floatCard()
-        val hist = historyCard()
         val devC = deviceCard(d)
         val pad = dp(10)
         val body = LinearLayout(this).apply {
@@ -97,21 +120,16 @@ class MainActivity : Activity() {
             if (resources.configuration.screenWidthDp >= 720) {   // tablet: 2 cột
                 orientation = LinearLayout.HORIZONTAL
                 fun col(vararg v: View) = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; v.forEach { addView(it) } }
-                addView(col(status, quick, feat, games, hist), LinearLayout.LayoutParams(0, WRAP, 1f))
+                addView(col(status, quick, feat, games, resetC), LinearLayout.LayoutParams(0, WRAP, 1f))
                 addView(col(stretch, tiles, fl, devC), LinearLayout.LayoutParams(0, WRAP, 1.25f))
             } else {
                 orientation = LinearLayout.VERTICAL
-                listOf(status, quick, feat, games, stretch, tiles, fl, hist, devC).forEach { addView(it) }
+                listOf(status, quick, feat, games, stretch, resetC, tiles, fl, devC).forEach { addView(it) }
             }
         }
-        val page = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(Ui.header(this@MainActivity, "TRUE STRETCH · SHIZUKU · REDMAGIC EDITION · v${BuildConfig.VERSION_NAME}"))
-            addView(body)
-        }
-        val s = ScrollView(this).apply { background = Ui.carbon(this@MainActivity); addView(page) }
-        sv = s
-        setContentView(s)
+        h.removeAllViews()
+        h.addView(Ui.header(this, "TRUE STRETCH · SHIZUKU · REDMAGIC EDITION · v${BuildConfig.VERSION_NAME}"))
+        h.addView(body)
         if (keep > 0) s.post { s.scrollTo(0, keep) }
     }
 
@@ -321,7 +339,7 @@ class MainActivity : Activity() {
 
     private fun toggleFloat() {
         if (FloatingService.running) stopService(Intent(this, FloatingService::class.java)) else startFloat()
-        ui.postDelayed({ buildUi() }, 700)
+        // giao diện tự cập nhật khi dịch vụ báo đã bật/tắt (FloatingService.onState)
     }
 
     // ---- Thông tin máy
@@ -440,6 +458,87 @@ class MainActivity : Activity() {
         dlg().setTitle("Chẩn đoán kéo giãn").setMessage(text).setPositiveButton("Đóng", null).show()
     }
 
+    // ---- DPI khi khôi phục (Reset)
+    /** dp theo chiều dài màn hình: px / (dpi / 160). */
+    private fun dpOf(d: Dev, dpi: Int) = (max(d.physW, d.physH) * 160f / dpi).roundToInt()
+    private fun dpiOf(d: Dev, dp: Int) = (max(d.physW, d.physH) * 160f / dp).roundToInt()
+
+    private fun resetCard(d: Dev?): View {
+        val c = card("DPI khi khôi phục")
+        if (d == null) { c.addView(Ui.tv(this, "Đang đọc thông tin…", 13f, Ui.MUTED)); return c }
+        val dpi = Engine.restoreDensity(prefs, d).first
+        val custom = prefs.resetDpi > 0
+        c.addView(Ui.tv(this, "Khi bấm Reset / Khôi phục (hoặc tắt hồ sơ), máy sẽ về mức:", 12f, Ui.MUTED))
+        c.addView(Ui.tv(this, "$dpi dpi · ${dpOf(d, dpi)} dp", 24f, if (custom) Ui.RED else Ui.TEXT, true).apply { setPadding(0, dp(6), 0, 0) })
+        c.addView(Ui.tv(this, if (custom) "Do bạn đặt" else "Tự động: lấy DPI trước khi app can thiệp", 11f, Ui.DIM))
+        c.addView(row(
+            Ui.btn(this, "Đặt DPI…") { editResetDpi(d) },
+            Ui.btn(this, "Dùng DPI hiện tại", Ui.GRAY) {
+                val cur = if (prefs.active && prefs.baseDpi > 0) prefs.baseDpi else d.curDpi
+                prefs.resetDpi = cur
+                toast("Khi reset sẽ về $cur dpi (${dpOf(d, cur)} dp)")
+                buildUi()
+            },
+            Ui.btn(this, "Tự động", Ui.GRAY) { prefs.resetDpi = 0; buildUi() }
+        ))
+        c.addView(note("dp = chiều dài màn hình ÷ (DPI ÷ 160). DPI càng thấp thì dp càng lớn (giao diện nhỏ, nhiều chỗ hơn). " +
+            "Nếu sau khi tắt kéo giãn máy không về đúng dp mong muốn, hãy đặt DPI ở đây — app sẽ ép lại nếu ROM tự đổi."))
+        return c
+    }
+
+    private fun editResetDpi(d: Dev) {
+        val start = Engine.restoreDensity(prefs, d).first
+        val et = EditText(this).apply {
+            setText(start.toString()); setTextColor(Ui.TEXT); setHintTextColor(Ui.DIM); hint = "DPI (ví dụ 320)"
+            inputType = InputType.TYPE_CLASS_NUMBER; setSingleLine(); textSize = 22f; setSelectAllOnFocus(true)
+        }
+        val dpTv = Ui.tv(this, "", 14f, Ui.RED, true).apply { setPadding(0, dp(6), 0, 0) }
+        fun upd() {
+            val v = et.text.toString().toIntOrNull()
+            dpTv.text = if (v == null || v <= 0) "—" else "= ${dpOf(d, v)} dp (chiều dài ${max(d.physW, d.physH)} px)"
+        }
+        et.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(e: Editable?) { upd() }
+            override fun beforeTextChanged(t: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(t: CharSequence?, a: Int, b: Int, c: Int) {}
+        })
+        upd()
+        val presets = listOf(1200, 1000, 900, 800, 720).map { w ->
+            Ui.btn(this, "${w}dp", Ui.GRAY) { et.setText(dpiOf(d, w).toString()); et.setSelection(et.text.length) }
+        }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), dp(4))
+            addView(Ui.tv(context, "Nhập DPI, hoặc chọn nhanh theo độ rộng dp:", 12f, Ui.MUTED))
+            addView(et); addView(dpTv)
+            addView(row(*presets.take(3).toTypedArray()))
+            addView(row(*presets.drop(3).toTypedArray()))
+        }
+        fun parse(): Int? {
+            val v = et.text.toString().toIntOrNull()
+            if (v == null || v < 120 || v > 800) { toast("DPI hợp lệ: 120–800"); return null }
+            return v
+        }
+        val b = dlg().setTitle("DPI khi khôi phục")
+            .setView(ScrollView(this).apply { addView(box) })
+            .setPositiveButton("Lưu") { _, _ ->
+                val v = parse()
+                if (v != null) { prefs.resetDpi = v; toast("Khi reset sẽ về $v dpi (${dpOf(d, v)} dp)"); buildUi() }
+            }
+            .setNegativeButton("Hủy", null)
+        if (!prefs.active && Shizu.granted()) {
+            // Đang ở trạng thái bình thường: cho đặt luôn DPI này ngay bây giờ
+            b.setNeutralButton("Lưu & đặt ngay") { _, _ ->
+                val v = parse()
+                if (v != null) {
+                    prefs.resetDpi = v
+                    Shizu.exec(if (v == d.physDpi) "wm density reset" else "wm density $v") { toast("Đã đặt $v dpi"); reload() }
+                }
+            }
+        }
+        b.show()
+    }
+
     // ---- Game + phiên bảo vệ
     private fun gameCard(): View {
         val games = Games.all(this)
@@ -463,14 +562,14 @@ class MainActivity : Activity() {
     private fun gameRow(g: GameEntry): View {
         val pm = packageManager
         val label = try { pm.getApplicationInfo(g.pkg, 0).loadLabel(pm).toString() } catch (_: Exception) { null }
-        val icon = try { pm.getApplicationIcon(g.pkg) } catch (_: Exception) { null }
+        val icon = iconCache.getOrPut(g.pkg) { try { pm.getApplicationIcon(g.pkg) } catch (_: Exception) { null } }
         val prof = Profiles.get(this, g.profile)
         val on = SessionService.running == g.pkg
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
             setPadding(0, dp(8), 0, dp(2))
             addView(ImageView(context).apply {
-                if (icon != null) setImageDrawable(icon) else setImageResource(R.drawable.ic_logo)
+                if (icon != null) setImageDrawable(icon.constantState?.newDrawable() ?: icon) else setImageResource(R.drawable.ic_logo)
             }, LinearLayout.LayoutParams(dp(40), dp(40)))
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL; setPadding(dp(10), 0, dp(6), 0)
@@ -594,8 +693,8 @@ class MainActivity : Activity() {
         val c = card("Cửa sổ nổi (pop-up)", Ui.tv(this, if (can) "Quyền hiển thị trên ứng dụng khác: đã cấp ✔" else "Cần cấp quyền hiển thị trên ứng dụng khác.", 13f, if (can) Ui.OK else Ui.TEXT))
         if (!can) c.addView(row(Ui.btn(this, "Cấp quyền") { grantOverlay() }))
         c.addView(row(
-            Ui.btn(this, "Bật cửa sổ nổi") { startFloat(); ui.postDelayed({ buildUi() }, 800) },
-            Ui.btn(this, "Tắt", Ui.GRAY) { stopService(Intent(this, FloatingService::class.java)); ui.postDelayed({ buildUi() }, 500) }
+            Ui.btn(this, "Bật cửa sổ nổi") { startFloat() },
+            Ui.btn(this, "Tắt", Ui.GRAY) { stopService(Intent(this, FloatingService::class.java)) }
         ))
         c.addView(Ui.switchRow(this, "Ẩn/hiện bằng Volume −", "Nhấn đúp Volume − khi đang chơi (cần Shizuku)", prefs.volHide) {
             prefs.volHide = !prefs.volHide
@@ -617,34 +716,5 @@ class MainActivity : Activity() {
         askNotifPermission()
         startForegroundService(Intent(this, FloatingService::class.java))
         toast("Đã bật bong bóng nổi")
-    }
-
-    // ---- Lịch sử
-    private fun historyCard(): View {
-        val items = History.all(this).take(8)
-        val c = card("Lịch sử")
-        if (items.isEmpty()) c.addView(Ui.tv(this, "Chưa có lần áp dụng nào.", 13f, Ui.MUTED))
-        else c.addView(Ui.tv(this, "Chạm một dòng để áp dụng lại.", 12f, Ui.MUTED))
-        val fmt = SimpleDateFormat("dd/MM HH:mm", Locale.US)
-        items.forEach { hi ->
-            val src = when (hi.src) { "tile" -> "Phím tắt"; "float" -> "Nổi"; "game" -> "Game"; else -> "App" }
-            c.addView(LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(7), 0, dp(7))
-                addView(Ui.tv(context, fmt.format(Date(hi.t)), 11f, Ui.DIM), LinearLayout.LayoutParams(dp(78), WRAP))
-                addView(Ui.tv(context, if (hi.reset) "Khôi phục" else "${hi.label} · ${fmtK(hi.k)}", 13f, if (hi.reset) Ui.MUTED else Ui.TEXT, true), LinearLayout.LayoutParams(0, WRAP, 1f))
-                addView(Ui.tv(context, src, 11f, Ui.DIM))
-                isClickable = true
-                setOnClickListener { reapply(hi) }
-            })
-        }
-        if (items.isNotEmpty()) c.addView(row(Ui.btn(this, "Xóa lịch sử", Ui.GRAY) { History.clear(this); buildUi() }))
-        return c
-    }
-
-    private fun reapply(h: HistoryItem) {
-        if (h.reset) { Actions.restore(this, "app") { m -> toast(m); reload() }; return }
-        prefs.wide = h.wide; prefs.res = h.res
-        Actions.applyManual(this, h.k, h.wide, h.res, "app") { m -> toast(m); reload() }
     }
 }

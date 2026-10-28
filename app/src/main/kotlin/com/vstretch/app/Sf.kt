@@ -135,11 +135,11 @@ object Sf {
             var lastApply = 0L
             while (watchRun) {
                 try {
-                    Thread.sleep(350)
+                    Thread.sleep(250)
                     val c = synchronized(lock) { cfg } ?: break
                     val d = readDisplay() ?: continue
                     val now = System.currentTimeMillis()
-                    if (d.rot != lastRot || now - lastApply > 1500) {
+                    if (d.rot != lastRot || now - lastApply > 600) {
                         val r = synchronized(lock) { if (cfg === c) applyNow(c, fill = true, force = false) else "SKIP" }
                         if (r == "STALE") {
                             // kích thước logic đã bị đổi từ nơi khác (adb / app khác): dừng, KHÔNG ép phép chiếu cũ

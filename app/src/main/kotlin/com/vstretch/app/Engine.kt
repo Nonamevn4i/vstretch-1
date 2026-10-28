@@ -55,7 +55,7 @@ object Engine {
                 p.baseDensityOverride = true
             }
             val plan = Stretch.plan(d.physW, d.physH, p.baseDpi, k, wide, res)
-            val cmd = if (plan.isDefault) restoreCommand()
+            val cmd = if (plan.isDefault) restoreCommand(p, d)
                       else "wm size ${plan.wmSize}; wm density ${plan.density}"
             Shizu.exec(cmd) { out ->
                 p.active = !plan.isDefault
@@ -63,12 +63,11 @@ object Engine {
                 if (out.startsWith("ERR")) {
                     refresh(app) { cb(out) }
                 } else {
-                    if (plan.isDefault) clearRestoreSnapshot(p)
                     // Chờ DisplayManager nhận kích thước mới rồi mới kéo giãn (Sf.set còn tự chờ thêm nếu cần)
                     main.postDelayed({
                         stretch(app, plan, d, p.fill && !plan.isDefault) { sMsg ->
                             refresh(app) {
-                                val head = if (plan.isDefault) "Đã khôi phục thiết lập gốc của thiết bị"
+                                val head = if (plan.isDefault) "Đã khôi phục thiết lập trước đó"
                                            else "Đã áp dụng ${plan.wmSize} @${plan.density}dpi (${fmtK(plan.k)})"
                                 cb("$head\n$sMsg")
                             }
@@ -94,10 +93,11 @@ object Engine {
             }
             // Sửa cảm ứng chỉ bật khi hình đã kéo giãn thành công; mọi trường hợp khác đều nhả thiết bị chạm
             val wantTouch = fill && !r.startsWith("ERR") && p.touch
+            val rd = restoreDensity(p, d)   // khôi phục khẩn cấp (Volume+) cũng dùng đúng DPI khi reset
             Shizu.call({
                 it.setTouch(
                     wantTouch, lnW, lnH, d.physW, d.physH,
-                    p.baseW, p.baseH, p.baseDpi, p.baseSizeOverride, p.baseDensityOverride
+                    p.baseW, p.baseH, rd.first, p.baseSizeOverride, rd.second
                 )
             }) { tr ->
                 touchMsg = tr
@@ -120,39 +120,69 @@ object Engine {
         val p = Prefs(app)
         if (!Shizu.granted()) { cb("Cần Shizuku để reset (hoặc chạy: adb shell wm size reset)"); return }
         Shizu.call({ it.setTouch(false, 0, 0, 0, 0, 0, 0, 0, false, false) }) {}   // nhả cảm ứng TRƯỚC khi đổi lại hiển thị
-        refresh(app) { _ ->
-            Shizu.exec(restoreCommand()) { out ->
-                if (out.startsWith("ERR")) {
-                    cb(out)
-                } else {
-                    p.active = false; p.k = 1f
-                    clearRestoreSnapshot(p)
-                    // trả phép chiếu SurfaceFlinger về mặc định và dừng canh gác
-                    main.postDelayed({
-                        refresh(app) { restored ->
-                            Shizu.call({ it.setStretch(restored.physW, restored.physH, restored.physW, restored.physH, false) }) { r ->
+        refresh(app) { d ->
+            Shizu.exec(restoreCommand(p, d)) {
+                p.active = false; p.k = 1f
+                // trả phép chiếu SurfaceFlinger về mặc định và dừng canh gác
+                main.postDelayed({
+                    refresh(app) { restored ->
+                        // Một số ROM tự đổi lại DPI sau khi đổi `wm size` -> kiểm tra và ép lại nếu lệch
+                        fixDensity(app, restored) { fin ->
+                            Shizu.call({ it.setStretch(fin.physW, fin.physH, fin.physW, fin.physH, false) }) { r ->
                                 stretchMsg = r
-                                cb("Đã reset về thiết lập màn hình gốc của thiết bị")
+                                val (dpi, _) = restoreDensity(p, fin)
+                                cb("Đã reset về thiết lập màn hình trước khi áp dụng StretchX (${fin.curDpi} dpi" +
+                                    (if (fin.curDpi != dpi && p.resetDpi > 0) " — ROM không nhận $dpi dpi" else "") + ")")
                             }
                         }
-                    }, 350)
-                }
+                    }
+                }, 350)
             }
         }
     }
 
-    private fun restoreCommand(): String {
-        // Không áp dụng lại snapshot đã lưu làm override: snapshot có thể là trạng thái
-        // StretchX đã tạo ở lần trước hoặc đã bị giữ sai sau khi thiết bị đã reset.
-        // wm reset luôn trả hiển thị về kích thước/DPI vật lý của panel (ví dụ 1200dp).
-        return "wm size reset; wm density reset"
+    /**
+     * DPI sẽ dùng khi khôi phục: (dpi, có cần `wm density <dpi>` không).
+     * Ưu tiên DPI người dùng chọn (Prefs.resetDpi); không có thì dùng DPI trước khi app can thiệp.
+     */
+    fun restoreDensity(p: Prefs, d: Dev): Pair<Int, Boolean> {
+        if (p.resetDpi > 0) return p.resetDpi to (p.resetDpi != d.physDpi)
+        val ov = p.baseDensityOverride || (p.baseDpi > 0 && p.baseDpi != d.physDpi)
+        return if (ov && p.baseDpi > 0) p.baseDpi to true else d.physDpi to false
     }
 
-    private fun clearRestoreSnapshot(p: Prefs) {
-        p.baseDpi = 0
-        p.baseW = 0
-        p.baseH = 0
-        p.baseSizeOverride = false
-        p.baseDensityOverride = false
+    /** Sau khi reset: nếu DPI thực tế chưa đúng mục tiêu thì ép lại một lần rồi đọc lại. */
+    private fun fixDensity(app: Context, d: Dev, done: (Dev) -> Unit) {
+        val (dpi, ov) = restoreDensity(Prefs(app), d)
+        val want = if (ov) dpi else d.physDpi
+        if (d.curDpi == want) { done(d); return }
+        Shizu.exec(if (ov) "wm density $dpi" else "wm density reset") {
+            main.postDelayed({ refresh(app) { done(it) } }, 250)
+        }
+    }
+
+    /**
+     * Áp lại phép chiếu kéo giãn NGAY (không đổi wm size/density, không đụng cảm ứng).
+     * Dùng sau khi thêm/bỏ cửa sổ nổi để hình không bị nháy về kiểu có viền đen.
+     */
+    fun resync(ctx: Context) {
+        val app = ctx.applicationContext
+        val p = Prefs(app)
+        val d = dev ?: return
+        if (!p.active || !p.fill || !Shizu.granted()) return
+        val plan = Stretch.plan(d.physW, d.physH, if (p.baseDpi > 0) p.baseDpi else d.curDpi, p.k, p.wide, p.res)
+        if (plan.isDefault) return
+        Shizu.call({ it.setStretch(plan.lnW, plan.lnH, d.physW, d.physH, true) }) {}
+    }
+
+    private fun restoreCommand(p: Prefs, d: Dev): String {
+        val size = if (p.baseSizeOverride && p.baseW > 0 && p.baseH > 0) {
+            "wm size ${p.baseW}x${p.baseH}"
+        } else {
+            "wm size reset"
+        }
+        val (dpi, ov) = restoreDensity(p, d)
+        val density = if (ov) "wm density $dpi" else "wm density reset"
+        return "$size; $density"
     }
 }
